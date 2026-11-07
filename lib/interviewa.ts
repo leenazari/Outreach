@@ -1,0 +1,127 @@
+import type { Candidate, SearchSpend } from "./types";
+
+export const EXPORT_RECORD_KEY = "latest-unlocked-export";
+
+export type InterviewaExportCandidate = {
+  source: string;
+  score: number;
+  subScores: { criterion: string; weight: number; score: number; reason: string }[];
+  validationStatus: string;
+  name: string | null;
+  profileUrl: string | null;
+  email: string | null;
+  summary: string;
+  costAttributedUsd: number;
+  sourceUrl: string | null;
+  identityNote: string | null;
+  title: string;
+  locationRegion: string;
+  skills: string[];
+  companyType: string;
+  unlocked: true;
+};
+
+export type InterviewaExport = {
+  product: "Interviewa candidate finder";
+  generatedAt: string;
+  searchId: string | null;
+  jobTitle: string;
+  location: string;
+  unlockThreshold: number;
+  candidates: InterviewaExportCandidate[];
+};
+
+const CSV_COLUMNS = [
+  "source",
+  "score",
+  "subScores",
+  "validationStatus",
+  "name",
+  "profileUrl",
+  "email",
+  "summary",
+  "costAttributedUsd",
+  "sourceUrl",
+  "identityNote",
+  "title",
+  "locationRegion",
+  "skills",
+  "companyType",
+] as const;
+
+export function toExportRows(candidates: Candidate[], spend: SearchSpend): InterviewaExportCandidate[] {
+  return candidates
+    .filter((candidate) => candidate.unlocked)
+    .map((candidate) => {
+      const cost = spend.candidates.find((row) => row.candidateId === candidate.id);
+      return {
+        source: candidate.sources.join(","),
+        score: candidate.score,
+        subScores: candidate.subscores.map((item) => ({
+          criterion: item.key,
+          weight: item.weight,
+          score: item.score,
+          reason: item.reason,
+        })),
+        validationStatus: candidate.validation.status,
+        name: candidate.name,
+        profileUrl: candidate.profileUrl,
+        email: candidate.email,
+        summary: candidate.snippet,
+        costAttributedUsd: cost?.totalUsd ?? 0,
+        sourceUrl: candidate.sourceUrl,
+        identityNote: candidate.identityNote,
+        title: candidate.title,
+        locationRegion: candidate.locationRegion,
+        skills: candidate.skills,
+        companyType: candidate.companyType,
+        unlocked: true as const,
+      };
+    });
+}
+
+export function buildExport(input: {
+  candidates: Candidate[];
+  spend: SearchSpend;
+  searchId: string | null;
+  jobTitle: string;
+  location: string;
+  unlockThreshold: number;
+  generatedAt?: string;
+}): InterviewaExport {
+  return {
+    product: "Interviewa candidate finder",
+    generatedAt: input.generatedAt ?? new Date().toISOString(),
+    searchId: input.searchId,
+    jobTitle: input.jobTitle,
+    location: input.location,
+    unlockThreshold: input.unlockThreshold,
+    candidates: toExportRows(input.candidates, input.spend),
+  };
+}
+
+function csvCell(value: unknown): string {
+  const text = Array.isArray(value) || (value && typeof value === "object") ? JSON.stringify(value) : value == null ? "" : String(value);
+  return `"${text.replaceAll("\"", "\"\"")}"`;
+}
+
+export function exportToCsv(payload: InterviewaExport): string {
+  const header = CSV_COLUMNS.join(",");
+  const lines = payload.candidates.map((row) => CSV_COLUMNS.map((column) => csvCell(row[column])).join(","));
+  return [header, ...lines].join("\n");
+}
+
+export async function postInterviewaWebhook(payload: InterviewaExport): Promise<void> {
+  const url = process.env.INTERVIEWA_WEBHOOK_URL?.trim() ?? "";
+  if (!url) return;
+  const secret = process.env.INTERVIEWA_WEBHOOK_SECRET?.trim() ?? "";
+  await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Interviewa-Webhook-Secret": secret,
+    },
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(15_000),
+  });
+}

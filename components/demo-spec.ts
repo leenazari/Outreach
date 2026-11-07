@@ -12,6 +12,8 @@ export const EMPTY_REQUEST: SearchRequest = {
   watchPhrases: "",
   useSampleData: false,
   includeIndeed: true,
+  includeEmail: false,
+  unlockThreshold: 80,
 };
 
 export const CURRENCIES = ["GBP", "EUR", "USD"] as const;

@@ -24,6 +24,8 @@ export type SearchRequest = {
   watchPhrases: string;
   useSampleData: boolean;
   includeIndeed: boolean;
+  includeEmail: boolean;
+  unlockThreshold: number;
 };
 
 export type ParsedSpec = {
@@ -126,16 +128,34 @@ export type SearchSpend = {
   note: string;
 };
 
+export type MatchCriterionKey = "title" | "skills" | "experience" | "location" | "seniority" | "recency";
+
+export type MatchCriterion = {
+  key: MatchCriterionKey;
+  label: string;
+  weight: number;
+  score: number;
+  reason: string;
+};
+
 export type Candidate = {
   id: string;
-  name: string;
+  name: string | null;
   title: string;
   location: string;
+  locationRegion: string;
+  companyType: string;
+  experienceSummary: string;
+  skills: string[];
   profileUrl: string | null;
+  sourceUrl: string | null;
+  email: string | null;
+  photoUrl: string | null;
   source: SourceId;
   sources: SourceId[];
   snippet: string;
   score: number;
+  subscores: MatchCriterion[];
   why: ScoreReason[];
   matchedMustHaves: string[];
   matchedNiceToHaves: string[];
@@ -145,6 +165,10 @@ export type Candidate = {
   cvFound: boolean;
   sample: boolean;
   validation: Validation;
+  unlocked: boolean;
+  unlockBlocked: boolean;
+  blockedReason: string | null;
+  identityNote: string | null;
 };
 
 export type SourceNotice = {
@@ -184,6 +208,7 @@ export type SearchResponse = {
     watchPhrases: string[];
   };
   spend: SearchSpend;
+  unlockThreshold: number;
 };
 
 export type RawCandidate = {
@@ -202,4 +227,7 @@ export type RawCandidate = {
   experience?: WorkRole[];
   connections?: number | null;
   origins?: RecordOrigin[];
+  sourceUrl?: string | null;
+  email?: string | null;
+  photoUrl?: string | null;
 };

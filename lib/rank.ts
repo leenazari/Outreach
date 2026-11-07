@@ -1,6 +1,8 @@
 import { RESULT_LIMIT } from "./actors";
 import type { Candidate, ParsedSpec, RawCandidate, ScoreReason, SourceId, ValidationStatus } from "./types";
 import { canonicalName, canonicalProfileUrl, clip, haystackIncludes, uniqueStrings } from "./text";
+import { companyType, locationRegion, presentCandidate } from "./identity";
+import { clampThreshold, scoreMatch } from "./match";
 import { validateProfile } from "./validate";
 
 export const NICE_TO_HAVE_POINTS = 15;
@@ -10,8 +12,12 @@ export const WATCH_POST_POINTS = 15;
 export const CV_POINTS = 10;
 export const MATCH_OPEN_PERCENT = 80;
 
-export function matchIsOpen(score: number): boolean {
-  return score >= MATCH_OPEN_PERCENT;
+export function matchIsOpen(score: number, threshold = MATCH_OPEN_PERCENT): boolean {
+  return score >= threshold;
+}
+
+export function presentRanked(candidates: Candidate[]): Candidate[] {
+  return candidates.map((candidate) => presentCandidate(candidate));
 }
 export const VALIDATION_POINTS: Record<ValidationStatus, number> = {
   verified: 0,
@@ -68,6 +74,9 @@ function mergeCandidate(existing: RawCandidate, incoming: RawCandidate): void {
     ...incoming.matchedWatchPhrases,
   ]);
   existing.sample = existing.sample && incoming.sample;
+  if (!existing.sourceUrl && incoming.sourceUrl) existing.sourceUrl = incoming.sourceUrl;
+  if (!existing.email && incoming.email) existing.email = incoming.email;
+  if (!existing.photoUrl && incoming.photoUrl) existing.photoUrl = incoming.photoUrl;
   existing.experience = [...(existing.experience ?? []), ...(incoming.experience ?? [])];
   existing.origins = [...(existing.origins ?? []), ...(incoming.origins ?? [])];
   if (typeof incoming.connections === "number") {
@@ -112,7 +121,13 @@ export function dedupeCandidates(records: RawCandidate[]): RawCandidate[] {
   return order;
 }
 
-function scoreOne(record: RawCandidate, spec: ParsedSpec): Candidate | null {
+function experienceSummary(record: RawCandidate): string {
+  const months = (record.experience ?? []).filter((role) => role.start).length;
+  if (months === 0) return "Experience length was not dated on the public record.";
+  return `${months} dated role${months === 1 ? "" : "s"} on the public record.`;
+}
+
+function scoreOne(record: RawCandidate, spec: ParsedSpec, threshold: number): Candidate | null {
   const matchedMustHaves = spec.mustHave.filter((phrase) => haystackIncludes(record.haystack, phrase));
   if (spec.mustHave.length > 0 && matchedMustHaves.length !== spec.mustHave.length) return null;
 
@@ -121,47 +136,10 @@ function scoreOne(record: RawCandidate, spec: ParsedSpec): Candidate | null {
     label: `Must-have: ${phrase}`,
     points: 0,
   }));
-
-  let score = 0;
-  let niceBudget = NICE_TO_HAVE_CAP;
-  for (const phrase of matchedNiceToHaves) {
-    const points = Math.min(NICE_TO_HAVE_POINTS, niceBudget);
-    niceBudget -= points;
-    score += points;
-    why.push({
-      label: points > 0 ? `Nice-to-have: ${phrase}` : `Nice-to-have: ${phrase} (cap reached)`,
-      points,
-    });
-  }
-
-  if (record.recentlyChangedJobs) {
-    score += RECENT_JOB_POINTS;
-    why.push({
-      label: "Changed jobs in the last 90 days",
-      points: RECENT_JOB_POINTS,
-    });
-  }
-
   if (record.competitorOrComplaintPost) {
-    score += WATCH_POST_POINTS;
     const phrases = record.matchedWatchPhrases;
     why.push({
-      label:
-        phrases.length > 0
-          ? `Posted about ${phrases.join(", ")}`
-          : "Returned by a watched-phrase post search",
-      points: WATCH_POST_POINTS,
-    });
-  }
-
-  if (record.cvFound) {
-    score += CV_POINTS;
-    why.push({ label: "Public resume snippet found", points: CV_POINTS });
-  }
-
-  if (why.length === matchedMustHaves.length) {
-    why.push({
-      label: "Passed the must-haves, with no extra nice-to-have or signal points",
+      label: phrases.length > 0 ? `Posted about ${phrases.join(", ")}` : "Returned by a watched-phrase post search",
       points: 0,
     });
   }
@@ -175,23 +153,35 @@ function scoreOne(record: RawCandidate, spec: ParsedSpec): Candidate | null {
     },
     spec,
   );
-  const adjustment = VALIDATION_POINTS[validation.status];
-  score = Math.max(0, Math.min(100, score + adjustment));
-  why.push({ label: VALIDATION_WHY[validation.status], points: adjustment });
+  const match = scoreMatch(record, spec, validation.status);
+  why.push({ label: VALIDATION_WHY[validation.status], points: 0 });
+  for (const criterion of match.criteria) {
+    why.push({ label: `${criterion.label}: ${criterion.reason}`, points: criterion.score });
+  }
 
   const sources = record.sources.length > 0 ? record.sources : (["linkedin-profile"] as SourceId[]);
+  const skills = [...matchedMustHaves, ...matchedNiceToHaves];
   const id = candidateKey(record);
+  const unlocked = !match.unlockBlocked && match.score >= threshold;
 
   return {
     id,
     name: record.name,
     title: record.title,
     location: record.location || "Location not listed",
+    locationRegion: locationRegion(record.location || ""),
+    companyType: companyType(record.title),
+    experienceSummary: experienceSummary(record),
+    skills,
     profileUrl: record.profileUrl,
+    sourceUrl: record.sourceUrl ?? (sources.every((source) => source === "indeed-resume") ? record.profileUrl : null),
+    email: record.email ?? null,
+    photoUrl: record.photoUrl ?? null,
     source: sources[0] ?? "linkedin-profile",
     sources,
     snippet: record.snippet,
-    score: Math.min(100, score),
+    score: match.score,
+    subscores: match.criteria,
     why,
     matchedMustHaves,
     matchedNiceToHaves,
@@ -201,19 +191,25 @@ function scoreOne(record: RawCandidate, spec: ParsedSpec): Candidate | null {
     cvFound: record.cvFound,
     sample: record.sample,
     validation,
+    unlocked,
+    unlockBlocked: match.unlockBlocked,
+    blockedReason: match.blockedReason,
+    identityNote: null,
   };
 }
 
 export function rankCandidates(
   records: RawCandidate[],
   spec: ParsedSpec,
+  threshold = 80,
 ): { candidates: Candidate[]; afterDedupe: number; droppedForMustHave: number; matched: number } {
+  const gate = clampThreshold(threshold);
   const deduped = dedupeCandidates(records);
   const candidates: Candidate[] = [];
   let droppedForMustHave = 0;
 
   for (const record of deduped) {
-    const scored = scoreOne(record, spec);
+    const scored = scoreOne(record, spec, gate);
     if (!scored) {
       droppedForMustHave += 1;
       continue;
@@ -224,7 +220,7 @@ export function rankCandidates(
   candidates.sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
     if (b.sources.length !== a.sources.length) return b.sources.length - a.sources.length;
-    return a.name.localeCompare(b.name);
+    return (a.name ?? "").localeCompare(b.name ?? "");
   });
 
   return {

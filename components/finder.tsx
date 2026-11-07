@@ -13,8 +13,8 @@ function isSearchResponse(value: unknown): value is SearchResponse {
   return (record.mode === "sample" || record.mode === "live") && Array.isArray(record.candidates);
 }
 
-export function Finder({ tokenConfigured }: { tokenConfigured: boolean }) {
-  const [form, setForm] = useState<SearchRequest>(EMPTY_REQUEST);
+export function Finder({ tokenConfigured, unlockThreshold }: { tokenConfigured: boolean; unlockThreshold: number }) {
+  const [form, setForm] = useState<SearchRequest>({ ...EMPTY_REQUEST, unlockThreshold });
   const [status, setStatus] = useState<"idle" | "loading" | "error" | "ready">("idle");
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SearchResponse | null>(null);

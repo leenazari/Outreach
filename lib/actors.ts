@@ -6,6 +6,7 @@ export const POST_ACTOR = "harvestapi/linkedin-post-search";
 export const INDEED_ACTOR = "lexis-solutions/resume-indeed-com-scraper";
 export const ENRICH_ACTOR = "harvestapi/linkedin-profile-scraper";
 export const ENRICH_MODE = "Profile details no email ($4 per 1k)";
+export const ENRICH_EMAIL_MODE = "Profile details + email search ($10 per 1k)";
 
 export const PROFILE_MAX_ITEMS = 10;
 export const POST_MAX_POSTS = 5;
@@ -86,9 +87,9 @@ export function actorLabel(actor: string): string {
   return actor;
 }
 
-export function buildEnrichInput(urls: string[]): Record<string, unknown> {
+export function buildEnrichInput(urls: string[], includeEmail = false): Record<string, unknown> {
   return {
-    profileScraperMode: ENRICH_MODE,
+    profileScraperMode: includeEmail ? ENRICH_EMAIL_MODE : ENRICH_MODE,
     queries: urls.slice(0, RESULT_LIMIT),
   };
 }

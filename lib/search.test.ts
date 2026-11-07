@@ -129,14 +129,17 @@ describe("ranking", () => {
     assert.equal(calls, 0);
     assert.equal(result.mode, "sample");
     assert.deepEqual(
-      result.candidates.map((candidate) => [candidate.name, candidate.score]),
+      result.candidates.map((candidate) => [candidate.name, candidate.score, candidate.unlocked]),
       [
-        ["Avery Lang", 60],
-        ["Riley Chen", 47],
-        ["Priya Shah", 32],
-        ["Morgan Adeyemi", 0],
+        ["Avery Lang", 96, true],
+        ["Priya Shah", 92, true],
+        [null, 86, true],
+        [null, 49, false],
       ],
     );
+    assert.equal(result.candidates[2]?.cvFound, true);
+    assert.match(result.candidates[2]?.identityNote ?? "", /Indeed/);
+    assert.equal(JSON.stringify(result.candidates[3]).includes("Morgan"), false);
     assert.deepEqual(
       result.candidates.map((candidate) => candidate.validation.status),
       ["verified", "review", "review", "risk"],
@@ -151,7 +154,7 @@ describe("ranking", () => {
     assert.equal(result.candidates[0]?.sources.length, 2);
     assert.equal(result.candidates[0]?.recentlyChangedJobs, true);
     assert.equal(result.candidates[0]?.competitorOrComplaintPost, true);
-    assert.equal(result.candidates[1]?.cvFound, true);
+    assert.equal(result.candidates[0]?.subscores.length, 6);
     assert.equal(result.candidates.every((candidate) => candidate.sample), true);
     assert.match(result.candidates[0]?.why.map((reason) => reason.label).join(" "), /Must-have: Figma/);
     assert.match(result.candidates[0]?.why.map((reason) => reason.label).join(" "), /Greenhouse/);
@@ -183,7 +186,7 @@ describe("ranking", () => {
     );
 
     assert.equal(ranked.afterDedupe, 1);
-    assert.equal(ranked.candidates[0]?.score, 32);
+    assert.equal(ranked.candidates[0]?.score, 80);
     assert.equal(ranked.candidates[0]?.validation.status, "review");
     assert.deepEqual(ranked.candidates[0]?.sources, ["indeed-resume", "linkedin-profile"]);
     assert.equal(dedupeCandidates([]).length, 0);
@@ -290,13 +293,15 @@ describe("live failures", () => {
       { ...spec, useSampleData: true, watchPhrases: [] },
       { token: "present", runActor: runner },
     );
-    assert.deepEqual(calls, [PROFILE_ACTOR, INDEED_ACTOR, ENRICH_ACTOR]);
+    assert.deepEqual(calls, [PROFILE_ACTOR, INDEED_ACTOR]);
     assert.equal(live.mode, "live");
     assert.equal(
       live.notices.some((notice) => notice.source === "indeed-resume"),
       true,
     );
-    assert.equal(live.candidates[0]?.name, "Priya Shah");
+    assert.equal(live.candidates[0]?.name, null);
+    assert.equal(live.candidates[0]?.unlocked, false);
+    assert.equal(JSON.stringify(live.candidates[0]).toLowerCase().includes("priya"), false);
   });
 });
 

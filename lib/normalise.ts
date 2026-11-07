@@ -113,6 +113,8 @@ export function normaliseLinkedInProfile(item: unknown): RawCandidate | null {
     sample: false,
     experience: readWorkRoles(record, "linkedin-profile"),
     connections: readConnections(record),
+    email: asString(record.email) || asString(record.emailAddress) || null,
+    photoUrl: asString(record.photo) || asString(record.profilePicture) || asString(record.pictureUrl) || null,
   };
 }
 
@@ -203,6 +205,7 @@ export function normaliseIndeedResume(item: unknown): RawCandidate | null {
     title: stripContactDetails(currentTitle),
     location: locationText(record.location) || asString(record.location),
     profileUrl,
+    sourceUrl: profileUrl,
     sources: ["indeed-resume"],
     snippet: stripContactDetails(snippet || currentTitle),
     haystack: [

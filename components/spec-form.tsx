@@ -67,6 +67,38 @@ export function SpecForm({ value, loading, onChange, onSubmit }: SpecFormProps) 
         </FieldHint>
       </div>
 
+      <div className="grid gap-2">
+        <Label htmlFor="unlockThreshold">Unlock threshold</Label>
+        <input
+          id="unlockThreshold"
+          type="number"
+          min={0}
+          max={100}
+          value={value.unlockThreshold}
+          onChange={(event) => update("unlockThreshold", Number(event.target.value))}
+          className="h-11 w-28 rounded-xl border border-input bg-card px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+        />
+        <FieldHint>
+          Default 80, or UNLOCK_THRESHOLD on the server. At or above this match, identity is returned. Below it, the
+          API omits the name, profile link, photo, and contact details.
+        </FieldHint>
+      </div>
+
+      <div className="flex items-start gap-3 rounded-2xl border border-border bg-[#f8f3ea] px-3 py-3">
+        <Switch
+          id="includeEmail"
+          checked={value.includeEmail}
+          onCheckedChange={(checked) => update("includeEmail", checked)}
+        />
+        <div className="grid gap-1">
+          <Label htmlFor="includeEmail">Email search on unlocked LinkedIn profiles</Label>
+          <p className="text-sm leading-5 text-muted-foreground">
+            Off by default. When on, only people who clear the threshold get the $0.01 full profile with email.
+            Otherwise that second call is the $0.004 profile with no email. People under the threshold are not enriched.
+          </p>
+        </div>
+      </div>
+
       <div className="flex items-start gap-3 rounded-2xl border border-border bg-[#f8f3ea] px-3 py-3">
         <Switch
           id="includeIndeed"

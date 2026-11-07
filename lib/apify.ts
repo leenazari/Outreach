@@ -143,6 +143,23 @@ async function ensureSearchStore(token: string): Promise<void> {
   if (response.ok || response.status === 409) return;
 }
 
+export async function putStoreRecord(token: string, key: string, value: unknown): Promise<void> {
+  await ensureSearchStore(token);
+  await apifyFetch(token, `https://api.apify.com/v2/key-value-stores/${SEARCH_STORE}/records/${key}`, {
+    method: "PUT",
+    body: JSON.stringify(value),
+    signal: AbortSignal.timeout(15_000),
+  });
+}
+
+export async function getStoreRecord(token: string, key: string): Promise<unknown | null> {
+  const response = await apifyFetch(token, `https://api.apify.com/v2/key-value-stores/${SEARCH_STORE}/records/${key}`, {
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!response.ok) return null;
+  return response.json();
+}
+
 export async function saveSearchGroup(token: string, group: SearchGroupRecord): Promise<void> {
   await ensureSearchStore(token);
   await apifyFetch(token, `https://api.apify.com/v2/key-value-stores/${SEARCH_STORE}/records/search-${group.searchId}`, {

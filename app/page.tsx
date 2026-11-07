@@ -14,7 +14,9 @@ function FinderFallback() {
 async function FinderWithToken() {
   await connection();
   const tokenConfigured = Boolean(process.env.APIFY_TOKEN?.trim());
-  return <Finder tokenConfigured={tokenConfigured} />;
+  const parsed = Number(process.env.UNLOCK_THRESHOLD);
+  const unlockThreshold = Number.isFinite(parsed) ? Math.min(100, Math.max(0, Math.round(parsed))) : 80;
+  return <Finder tokenConfigured={tokenConfigured} unlockThreshold={unlockThreshold} />;
 }
 
 export default function Home() {
