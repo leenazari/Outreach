@@ -147,7 +147,6 @@ export type Candidate = {
   location: string;
   locationRegion: string;
   company: string;
-  companyType: string;
   experienceSummary: string;
   skills: string[];
   profileUrl: string | null;
@@ -219,6 +218,7 @@ export type RawCandidate = {
   queryUrls?: string[];
   company?: string;
   industry?: string;
+  enriched?: boolean;
   sources: SourceId[];
   snippet: string;
   haystack: string;

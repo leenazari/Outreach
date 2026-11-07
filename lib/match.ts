@@ -16,6 +16,7 @@ export const MATCH_WEIGHTS = {
 } as const;
 
 export const HIGH_RISK_SCORE_CAP = 49;
+export const INDUSTRY_SCORE_CAP = 40;
 
 const STOP = new Set(["a", "an", "the", "of", "and", "or", "in", "for", "to", "at", "on"]);
 
@@ -337,21 +338,15 @@ export function scoreMatch(
   const assessed = criteria.filter((item) => item.assessed);
   const weightSum = assessed.reduce((total, item) => total + item.weight, 0);
   const raw = weightSum === 0 ? 0 : Math.round(assessed.reduce((total, item) => total + item.score * item.weight, 0) / weightSum);
-  if (validation === "risk") {
-    return {
-      score: Math.min(raw, HIGH_RISK_SCORE_CAP),
-      criteria,
-      unlockBlocked: true,
-      blockedReason: "High risk blocks identity unlock. The match is capped below the gate.",
-      eligible: false,
-    };
-  }
+  let score = Math.max(0, Math.min(100, raw));
+  if (validation === "risk") score = Math.min(score, HIGH_RISK_SCORE_CAP);
+  if (record.enriched && industryConflict(spec, record)) score = Math.min(score, INDUSTRY_SCORE_CAP);
   return {
-    score: Math.max(0, Math.min(100, raw)),
+    score,
     criteria,
-    unlockBlocked: false,
-    blockedReason: null,
-    eligible: unlockEligible(criteria),
+    unlockBlocked: validation === "risk",
+    blockedReason: validation === "risk" ? "High risk caps the match score." : null,
+    eligible: validation === "risk" ? false : unlockEligible(criteria),
   };
 }
 

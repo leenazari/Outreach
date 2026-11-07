@@ -17,7 +17,6 @@ export type InterviewaExportCandidate = {
   company: string;
   locationRegion: string;
   skills: string[];
-  companyType: string;
 };
 
 export type InterviewaExport = {
@@ -44,7 +43,6 @@ const CSV_COLUMNS = [
   "company",
   "locationRegion",
   "skills",
-  "companyType",
 ] as const;
 
 export function toExportRows(candidates: Candidate[], spend: SearchSpend): InterviewaExportCandidate[] {
@@ -70,7 +68,6 @@ export function toExportRows(candidates: Candidate[], spend: SearchSpend): Inter
         company: candidate.company,
         locationRegion: candidate.locationRegion,
         skills: candidate.skills,
-        companyType: candidate.companyType,
       };
     });
 }

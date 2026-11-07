@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { ENRICH_ACTOR, PROFILE_ACTOR } from "./actors";
 import { parseRunCharge, readRunSnapshot, withSettledUsageTotal } from "./charge";
 import { usdToMicros } from "./money";
 
@@ -138,5 +139,39 @@ describe("Apify run charge", () => {
     const settled = withSettledUsageTotal(preliminary!);
     const charge = parseRunCharge(settled, 5);
     assert.equal(charge.totalUsd, 0.02);
+  });
+
+  it("does not log zero for a succeeded run that already has charged events", () => {
+    const enrich = withSettledUsageTotal(
+      run({
+        usageTotalUsd: 0,
+        chargedEventCounts: { profile: 5 },
+        accountedChargedEventCounts: { profile: 5 },
+        pricingInfo: { pricingModel: "PAY_PER_EVENT", pricingPerEvent: { actorChargeEvents: {} } },
+      })!,
+      ENRICH_ACTOR,
+    );
+    assert.equal(parseRunCharge(enrich, 5).totalUsd, 0.02);
+
+    const search = withSettledUsageTotal(
+      run({
+        usageTotalUsd: 0,
+        chargedEventCounts: { "search-page": 1 },
+        pricingInfo: { pricingModel: "PAY_PER_EVENT", pricingPerEvent: { actorChargeEvents: {} } },
+      })!,
+      PROFILE_ACTOR,
+    );
+    assert.equal(parseRunCharge(search, 10).totalUsd, 0.1);
+
+    const bare = parseRunCharge(
+      run({
+        usageTotalUsd: 0,
+        chargedEventCounts: { profile: 5 },
+        pricingInfo: { pricingModel: "PAY_PER_EVENT", pricingPerEvent: { actorChargeEvents: {} } },
+      }),
+      5,
+    );
+    assert.equal(bare.settled, false);
+    assert.equal(bare.totalUsd, null);
   });
 });

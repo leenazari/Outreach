@@ -322,6 +322,14 @@ export function validateProfile(
     }
   }
 
+  const thinHistory = dated.length < 2;
+  if (thinHistory) {
+    for (const reason of reasons) {
+      if (reason.summary === "A public date range ends before it starts.") continue;
+      reason.severe = false;
+    }
+  }
+
   const severe = reasons.some((reason) => reason.severe);
   const status: ValidationStatus = severe ? "risk" : reasons.length > 0 ? "review" : "verified";
   const visible: ValidationReason[] =

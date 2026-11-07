@@ -20,6 +20,25 @@ function tokensFrom(value: unknown, found: string[], seen: Set<string>): void {
   }
 }
 
+/** Shared member id across ACw (recruiter) and ACo (public) profile ids. */
+export function linkedInMemberKey(value: string): string | null {
+  const match = /AC[ow]A([A-Za-z0-9_-]{8,})/i.exec(value);
+  if (!match?.[1]) return null;
+  return `ACoA${match[1]}`.slice(0, 12);
+}
+
+export function memberKeysFrom(ids: string[] | undefined): string[] {
+  const found: string[] = [];
+  const seen = new Set<string>();
+  for (const id of ids ?? []) {
+    const key = linkedInMemberKey(id);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    found.push(key);
+  }
+  return found;
+}
+
 export function collectLinkedInIds(record: Record<string, unknown>): string[] {
   const found: string[] = [];
   const seen = new Set<string>();

@@ -61,12 +61,19 @@ function experienceBits(record: Record<string, unknown>): string[] {
 }
 
 function tenureMonths(record: Record<string, unknown>): number | null {
-  const positions = Array.isArray(record.currentPositions) ? record.currentPositions : [];
+  const positions = Array.isArray(record.currentPositions)
+    ? record.currentPositions
+    : Array.isArray(record.currentPosition)
+      ? record.currentPosition
+      : [];
   const primary = asRecord(positions[0]);
   if (!primary) return null;
   const tenure = asRecord(primary.tenureAtPosition) || asRecord(primary.tenureAtCompany);
-  if (!tenure || typeof tenure.numMonths !== "number") return null;
-  return tenure.numMonths;
+  if (!tenure) return null;
+  const years = typeof tenure.numYears === "number" ? tenure.numYears : 0;
+  const months = typeof tenure.numMonths === "number" ? tenure.numMonths : 0;
+  if (typeof tenure.numYears !== "number" && typeof tenure.numMonths !== "number") return null;
+  return years * 12 + months;
 }
 
 function personName(first: unknown, last: unknown, fallback: string): string {

@@ -47,7 +47,7 @@ Every person who passes the must-have keyword gate gets a 0–100 match score fr
 
 High risk caps the score at 49. Needs review does not. Every candidate is shown with the name, profile URL, photo, and source URL the actor returned. The card shows the current company from the full profile, or from the short profile’s current position, rather than a sector guessed from the title. The profile link is `linkedin.com/in/<publicIdentifier>` when the source has one, and the ACwAA link otherwise.
 
-After the short-profile score, the people are sorted by score and the top `ENRICH_TOP_N` (default 5) at 50 or above are sent together to `harvestapi/linkedin-profile-scraper` in full-profile mode with no email, about $0.004 each. A profile that only has an ACwAA id is still included. The full profile is merged back by that id or by `objectUrn` / `entityUrn`, then scored again from skills, about, experience, and current company. A stated industry that clearly conflicts with the spec (for example commercial aviation against B2B SaaS) scores skills at 0. A criterion with no data is left out of the total and shown as “not assessed”; the remaining weights are scaled back to 100. Email search ($0.01) runs for those same profiles only when the email switch is on. Include Indeed is off unless the form turns it on. This app does not log into Indeed.
+After the short-profile score, the people are sorted by score and the top `ENRICH_TOP_N` (default 5) at 50 or above are sent together to `harvestapi/linkedin-profile-scraper` in full-profile mode with no email, about $0.004 each. A profile that only has an ACwAA id is still included. The full profile is merged back by that id or by `objectUrn` / `entityUrn`, then scored again from skills, about, experience, and current company. A stated industry that clearly conflicts with the spec (for example commercial aviation or luxury jewellery retail against B2B SaaS) scores skills at 0 and caps the overall match at 40 once the full profile is in. A short profile with only the current role is Needs review when the dates are too thin to support a stronger finding. A criterion with no data is left out of the total and shown as “not assessed”; the remaining weights are scaled back to 100. Email search ($0.01) runs for those same profiles only when the email switch is on. Include Indeed is off unless the form turns it on. This app does not log into Indeed.
 
 ### Interviewa export
 
@@ -75,8 +75,7 @@ After the short-profile score, the people are sorted by score and the top `ENRIC
       "title": "Sales Executive",
       "company": "Northwind",
       "locationRegion": "United Kingdom",
-      "skills": ["B2B sales"],
-      "companyType": "Sales"
+      "skills": ["B2B sales"]
     }
   ]
 }

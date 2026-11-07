@@ -1,0 +1,719 @@
+[{
+  "id": "ACwAAA6jhKMBtoRab0o7Q-Q764P2E1KICZTGdIc",
+  "linkedinUrl": "https://www.linkedin.com/in/ACwAAA6jhKMBtoRab0o7Q-Q764P2E1KICZTGdIc",
+  "firstName": "Arjun",
+  "lastName": "Ahluwalia",
+  "openProfile": false,
+  "premium": true,
+  "currentPositions": [
+    {
+      "tenureAtPosition": {
+        "numYears": 1,
+        "numMonths": 6
+      },
+      "companyName": "Dealscribe",
+      "description": "Dealscribe is a technology-enabled research firm. We provide unbiased analysis on complex agreements such as RMBS Non-QM, CMBS SASB, CRE CLOs & BSL CLOs, allowing users to find information quickly and track market standards.",
+      "title": "Senior Sales Executive",
+      "current": true,
+      "company": {
+        "entityUrn": "urn:li:fs_salesCompany:69200904",
+        "name": "Dealscribe",
+        "companyPictureDisplayImage": {
+          "rootUrl": "https://media.licdn.com/dms/image/v2/C4D0BAQFUq3lDoor_OQ/company-logo_",
+          "artifacts": [
+            {
+              "width": 200,
+              "fileIdentifyingUrlPathSegment": "200_200/company-logo_200_200/0/1630516626847/dealscribe_logo?e=1795651200&v=beta&t=2ZJJNVarRXZ9aAwRoysiLRwnL6-3rTwVVKNa1SOUS7Q",
+              "height": 200
+            },
+            {
+              "width": 100,
+              "fileIdentifyingUrlPathSegment": "100_100/company-logo_100_100/0/1630516626847/dealscribe_logo?e=1795651200&v=beta&t=4N52_Bl2BbeRlJCRSnRzNGm387ulBXG6nsYwA3exbOs",
+              "height": 100
+            },
+            {
+              "width": 400,
+              "fileIdentifyingUrlPathSegment": "400_400/company-logo_400_400/0/1630516626847/dealscribe_logo?e=1795651200&v=beta&t=Blq7kXcb8IB90qWOnTAL5if57jelTJiADU8UL5zmdvI",
+              "height": 400
+            }
+          ]
+        },
+        "industry": "Information Services",
+        "location": "London, England, United Kingdom"
+      },
+      "tenureAtCompany": {
+        "numYears": 5,
+        "numMonths": 3
+      },
+      "startedOn": {
+        "month": 6,
+        "year": 2025
+      },
+      "companyId": "69200904",
+      "companyLinkedinUrl": "https://www.linkedin.com/company/69200904"
+    }
+  ],
+  "pictureUrl": "https://media.licdn.com/dms/image/v2/D4E03AQGaUNVldx2oIg/profile-displayphoto-crop_800_800/B4EZ6SjjwVIcAI-/0/1780575257104?e=1795651200&v=beta&t=3bpqIrHn4HZgN2NHCBpSs12EHXKtFMkhvqWFaHoCrgk",
+  "location": {
+    "linkedinText": "London, England, United Kingdom"
+  },
+  "_meta": {
+    "pagination": {
+      "totalElements": 2244,
+      "totalPages": 90,
+      "pageNumber": 1,
+      "previousElements": 0,
+      "pageSize": 25
+    },
+    "scrapedAt": "2026-11-07T12:16:44.086Z"
+  },
+  "profileIdInSearch": "ACwAAA6jhKMBtoRab0o7Q-Q764P2E1KICZTGdIc"
+},
+{
+  "id": "ACwAAAYJKrwBAAZ5zCf1oo9qxPjBNeXUBbW_nWQ",
+  "linkedinUrl": "https://www.linkedin.com/in/ACwAAAYJKrwBAAZ5zCf1oo9qxPjBNeXUBbW_nWQ",
+  "firstName": "Lucy",
+  "lastName": "Hitchinson",
+  "openProfile": false,
+  "premium": true,
+  "currentPositions": [
+    {
+      "tenureAtPosition": {
+        "numYears": 3,
+        "numMonths": 2
+      },
+      "companyName": "EDITED",
+      "description": "EDITED is the leader in Retail Market Intelligence. We help retailers make better decisions and drive sales through AI-driven market data, research, and analytics.\n\nBrands like Zara, Puma, John Lewis, and Tommy Hilfiger use the EDITED suite of market intelligence products to create their retail strategies and make better assortment, pricing and promotion decisions every day.",
+      "title": "Senior Sales Executive",
+      "current": true,
+      "company": {
+        "entityUrn": "urn:li:fs_salesCompany:1136880",
+        "name": "EDITED",
+        "companyPictureDisplayImage": {
+          "rootUrl": "https://media.licdn.com/dms/image/v2/D4E0BAQG2QhRlDqvKvQ/company-logo_",
+          "artifacts": [
+            {
+              "width": 400,
+              "fileIdentifyingUrlPathSegment": "400_400/B4EaGrII.VJgAY-/0/1793872400552/edited_logo?e=1795651200&v=beta&t=wMsvTKoVQOEVFfsbJffZZaBHGmTT5K7avQ2WFStQ0Lk",
+              "height": 400
+            },
+            {
+              "width": 200,
+              "fileIdentifyingUrlPathSegment": "200_200/B4EaGrII.VJgAI-/0/1793872400552/edited_logo?e=1795651200&v=beta&t=ab9ZHyyT-4awFgcUx4-gHL0cd70DAEQnxZwiHo2DVTs",
+              "height": 200
+            },
+            {
+              "width": 100,
+              "fileIdentifyingUrlPathSegment": "100_100/B4EaGrII.VJgAM-/0/1793872400552/edited_logo?e=1795651200&v=beta&t=3l8CAn3b-KOaSXVY0_jtIwiZXAN6Vmx7D-fa97zz0nQ",
+              "height": 100
+            }
+          ]
+        },
+        "industry": "Software Development",
+        "location": "London, England, United Kingdom"
+      },
+      "tenureAtCompany": {
+        "numYears": 3,
+        "numMonths": 2
+      },
+      "startedOn": {
+        "month": 10,
+        "year": 2023
+      },
+      "companyId": "1136880",
+      "companyLinkedinUrl": "https://www.linkedin.com/company/1136880"
+    }
+  ],
+  "pictureUrl": "https://media.licdn.com/dms/image/v2/D4E03AQEnZ5f2csweag/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1698665368933?e=1795651200&v=beta&t=oSS8Z3w1FK3NpmclSIjyUoCiVZ78ki2Zh7Na2-Nwzk0",
+  "location": {
+    "linkedinText": "London, England, United Kingdom"
+  },
+  "_meta": {
+    "pagination": {
+      "totalElements": 2244,
+      "totalPages": 90,
+      "pageNumber": 1,
+      "previousElements": 0,
+      "pageSize": 25
+    },
+    "scrapedAt": "2026-11-07T12:16:44.087Z"
+  },
+  "profileIdInSearch": "ACwAAAYJKrwBAAZ5zCf1oo9qxPjBNeXUBbW_nWQ"
+},
+{
+  "id": "ACwAACge4yUBeh2ViWbawab-eDGQSh7srWc8amw",
+  "linkedinUrl": "https://www.linkedin.com/in/ACwAACge4yUBeh2ViWbawab-eDGQSh7srWc8amw",
+  "firstName": "Cameron",
+  "lastName": "Stebbing",
+  "openProfile": false,
+  "premium": false,
+  "currentPositions": [
+    {
+      "tenureAtPosition": {
+        "numYears": 4,
+        "numMonths": 8
+      },
+      "companyName": "ITV",
+      "title": "Senior Sales Executive",
+      "current": true,
+      "company": {
+        "entityUrn": "urn:li:fs_salesCompany:164505",
+        "name": "ITV",
+        "companyPictureDisplayImage": {
+          "rootUrl": "https://media.licdn.com/dms/image/v2/D4E0BAQEAhyXTeU7zVA/company-logo_",
+          "artifacts": [
+            {
+              "width": 200,
+              "fileIdentifyingUrlPathSegment": "200_200/company-logo_200_200/0/1715092356081/itv_logo?e=1795651200&v=beta&t=oQMDH06Korbr3tGSlpVq7RzQFFJow96hTDkCnlYsNcc",
+              "height": 200
+            },
+            {
+              "width": 100,
+              "fileIdentifyingUrlPathSegment": "100_100/company-logo_100_100/0/1715092356081/itv_logo?e=1795651200&v=beta&t=Ie2PnD9T7OlX1KvpSxRmqqulf2T96-2eEz5YQbxxGuk",
+              "height": 100
+            },
+            {
+              "width": 400,
+              "fileIdentifyingUrlPathSegment": "400_400/company-logo_400_400/0/1715092356081/itv_logo?e=1795651200&v=beta&t=RlXVQC0z3P9rAJ8DmjpeuFMiJc5BRs9hw_DdSlGqoJk",
+              "height": 400
+            }
+          ]
+        },
+        "industry": "Broadcast Media Production and Distribution",
+        "location": "London, England, United Kingdom"
+      },
+      "tenureAtCompany": {
+        "numYears": 9,
+        "numMonths": 3
+      },
+      "startedOn": {
+        "month": 4,
+        "year": 2022
+      },
+      "companyId": "164505",
+      "companyLinkedinUrl": "https://www.linkedin.com/company/164505"
+    }
+  ],
+  "pictureUrl": "https://media.licdn.com/dms/image/v2/C5603AQFsG5Z-1vGp_w/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1593245234015?e=1795651200&v=beta&t=ltd64qmhZ-7OTD8nHg-qd9-94lLIlHYlqUIzfy7VZu0",
+  "location": {
+    "linkedinText": "London, England, United Kingdom"
+  },
+  "_meta": {
+    "pagination": {
+      "totalElements": 2244,
+      "totalPages": 90,
+      "pageNumber": 1,
+      "previousElements": 0,
+      "pageSize": 25
+    },
+    "scrapedAt": "2026-11-07T12:16:44.086Z"
+  },
+  "profileIdInSearch": "ACwAACge4yUBeh2ViWbawab-eDGQSh7srWc8amw"
+},
+{
+  "id": "ACwAAAEulnEBxMvCP7btatk3OEk1kbrRBy4CQ3k",
+  "linkedinUrl": "https://www.linkedin.com/in/ACwAAAEulnEBxMvCP7btatk3OEk1kbrRBy4CQ3k",
+  "firstName": "Russell",
+  "lastName": "Cox",
+  "openProfile": false,
+  "premium": false,
+  "currentPositions": [
+    {
+      "tenureAtPosition": {
+        "numYears": 8,
+        "numMonths": 11
+      },
+      "companyName": "Syniverse",
+      "title": "Senior Sales Executive Director",
+      "current": true,
+      "company": {
+        "entityUrn": "urn:li:fs_salesCompany:8490",
+        "name": "Syniverse",
+        "companyPictureDisplayImage": {
+          "rootUrl": "https://media.licdn.com/dms/image/v2/D4E0BAQH017MEaQAu-Q/company-logo_",
+          "artifacts": [
+            {
+              "width": 200,
+              "fileIdentifyingUrlPathSegment": "200_200/company-logo_200_200/0/1732061469758/syniverse_logo?e=1795651200&v=beta&t=3Dsq4AXEXN1qkORtXHB0aJR9zD6BNUqfS31661NgkmA",
+              "height": 200
+            },
+            {
+              "width": 100,
+              "fileIdentifyingUrlPathSegment": "100_100/company-logo_100_100/0/1732061469758/syniverse_logo?e=1795651200&v=beta&t=UMWDvEhrLK6sNSlU_JMFN2H9Hhi72K4KpRqhmifJ9Zk",
+              "height": 100
+            },
+            {
+              "width": 400,
+              "fileIdentifyingUrlPathSegment": "400_400/company-logo_400_400/0/1732061469758/syniverse_logo?e=1795651200&v=beta&t=7D-UFhRfOWxX3WsjnMfvOfQqYFEppBl28jSwqt3mXwc",
+              "height": 400
+            }
+          ]
+        },
+        "industry": "IT Services and IT Consulting",
+        "location": "Tampa, Florida, United States"
+      },
+      "tenureAtCompany": {
+        "numYears": 11
+      },
+      "startedOn": {
+        "month": 1,
+        "year": 2018
+      },
+      "companyId": "8490",
+      "companyLinkedinUrl": "https://www.linkedin.com/company/8490"
+    }
+  ],
+  "location": {
+    "linkedinText": "London, England, United Kingdom"
+  },
+  "_meta": {
+    "pagination": {
+      "totalElements": 2244,
+      "totalPages": 90,
+      "pageNumber": 1,
+      "previousElements": 0,
+      "pageSize": 25
+    },
+    "scrapedAt": "2026-11-07T12:16:44.087Z"
+  },
+  "profileIdInSearch": "ACwAAAEulnEBxMvCP7btatk3OEk1kbrRBy4CQ3k"
+},
+{
+  "id": "ACwAACFv8rEBgNk-wO0R9eVH4oJYgt1zkADpNig",
+  "linkedinUrl": "https://www.linkedin.com/in/ACwAACFv8rEBgNk-wO0R9eVH4oJYgt1zkADpNig",
+  "firstName": "Howard ",
+  "lastName": "Campbell",
+  "openProfile": false,
+  "premium": false,
+  "currentPositions": [
+    {
+      "tenureAtPosition": {
+        "numYears": 7,
+        "numMonths": 9
+      },
+      "companyName": "SAUDIA AIRLINES",
+      "description": "Managing key Accounts, TMC, Leisure and VFR Markets. On a day to day basis my role mainly involves Sales Calls to key Accounts, while at the same time conducting cold calling to Agents to identify new revenue streams. Online calls via Teams, Google and Zoom are also essential. Online Calls also allows for me to do product training to dedicated Agencies Call Centers. \n\nMy role also involves attending events, roadshows and other functions to represent and promote SAUDIA.\n\nProducing marketing material for the trade. This can be producing E-flyer documents  targeting flight schedules, on board product information and other essential information for the trade.\n\nIn depth knowledge of NEGO SPACE CAT 25 & 35 fares, B 2 B markets.\n\nArranging charter flights for special events. In 2020 (JAN) I initiated the set up of arranging a charter for Barcelona FC to play in the Spanish Cup in Saudi Arabia.\n\nAchievements\n\nSuccessfully grown my Commercial agreements portfolio in 2024 vs PY23 by 65%. This was done by done by using my key skills to negotiate with Key Accounts to successfully get the best outcome for both parties.\n\nSuccessfully grew the Groups revenue for  F1. Jeddah GP 2024. This has mainly been down to growing a stronger relationship with a TMC dedicated to F1 movements. To allow for the increase in revenue it was essential to negotiate competitive fares and adding policies to allow the TMC and SAUDIA to gain maximum revenue possibilities.\n\nFEBRUARY 2024.",
+      "title": "Senior Sales Executive",
+      "current": true,
+      "company": {
+        "entityUrn": "urn:li:fs_salesCompany:16886",
+        "name": "SAUDI AIRLINES",
+        "companyPictureDisplayImage": {
+          "rootUrl": "https://media.licdn.com/dms/image/v2/D4D0BAQHwv3dqp_Y4FA/company-logo_",
+          "artifacts": [
+            {
+              "width": 200,
+              "fileIdentifyingUrlPathSegment": "200_200/company-logo_200_200/0/1696083630631/saudia_airlines_logo?e=1795651200&v=beta&t=wp6H6lM1FbuVHEbCEpQNqKib5-QLDIavwATGMgxWlpA",
+              "height": 200
+            },
+            {
+              "width": 100,
+              "fileIdentifyingUrlPathSegment": "100_100/company-logo_100_100/0/1696083630631/saudia_airlines_logo?e=1795651200&v=beta&t=_SwyyBUwigro2lDIR7HGr0xyA1EJmVU__47kE5JdHAw",
+              "height": 100
+            },
+            {
+              "width": 400,
+              "fileIdentifyingUrlPathSegment": "400_400/company-logo_400_400/0/1696083630631/saudia_airlines_logo?e=1795651200&v=beta&t=o_RVxpwch42Z2KdmOcrp42qby8t7UMFFbDbNp6atCtg",
+              "height": 400
+            }
+          ]
+        },
+        "industry": "Airlines and Aviation",
+        "location": "Jiddah, Makkah, Saudi Arabia"
+      },
+      "tenureAtCompany": {
+        "numYears": 27,
+        "numMonths": 8
+      },
+      "startedOn": {
+        "month": 3,
+        "year": 2019
+      },
+      "companyId": "16886",
+      "companyLinkedinUrl": "https://www.linkedin.com/company/16886"
+    }
+  ],
+  "location": {
+    "linkedinText": "London Area, United Kingdom"
+  },
+  "_meta": {
+    "pagination": {
+      "totalElements": 2244,
+      "totalPages": 90,
+      "pageNumber": 1,
+      "previousElements": 0,
+      "pageSize": 25
+    },
+    "scrapedAt": "2026-11-07T12:16:44.086Z"
+  },
+  "profileIdInSearch": "ACwAACFv8rEBgNk-wO0R9eVH4oJYgt1zkADpNig"
+},
+{
+  "id": "ACwAACmstvYBCQw6CFz-1SAkt0IFpGmac9c6xS4",
+  "linkedinUrl": "https://www.linkedin.com/in/ACwAACmstvYBCQw6CFz-1SAkt0IFpGmac9c6xS4",
+  "firstName": "Kevin",
+  "lastName": "Alfred",
+  "openProfile": false,
+  "premium": false,
+  "currentPositions": [
+    {
+      "tenureAtPosition": {
+        "numMonths": 5
+      },
+      "companyName": "CloserStill Media",
+      "title": "Senior Sales Executive - London Vet Show & BVA Live",
+      "current": true,
+      "company": {
+        "entityUrn": "urn:li:fs_salesCompany:936566",
+        "name": "CloserStill Media",
+        "companyPictureDisplayImage": {
+          "rootUrl": "https://media.licdn.com/dms/image/v2/D560BAQHiSyAKqLSdzg/company-logo_",
+          "artifacts": [
+            {
+              "width": 200,
+              "fileIdentifyingUrlPathSegment": "200_200/company-logo_200_200/0/1698972479784?e=1795651200&v=beta&t=HpLJRKk2uA5_vSIILh-L823XCCaO5M4OJJJbrFEPHlQ",
+              "height": 200
+            },
+            {
+              "width": 100,
+              "fileIdentifyingUrlPathSegment": "100_100/company-logo_100_100/0/1698972479784?e=1795651200&v=beta&t=ORcm4Awoih_zJP-fttSVZNuilk2LbmAHVTugc_T8eOc",
+              "height": 100
+            },
+            {
+              "width": 400,
+              "fileIdentifyingUrlPathSegment": "400_400/company-logo_400_400/0/1698972479784?e=1795651200&v=beta&t=ENTdwxQuj3ylSHUuI0mV_AMjZdnGW2PJYZnr0A85L6c",
+              "height": 400
+            }
+          ]
+        },
+        "industry": "Events Services",
+        "location": "London, England, United Kingdom"
+      },
+      "tenureAtCompany": {
+        "numYears": 4,
+        "numMonths": 5
+      },
+      "startedOn": {
+        "month": 7,
+        "year": 2026
+      },
+      "companyId": "936566",
+      "companyLinkedinUrl": "https://www.linkedin.com/company/936566"
+    }
+  ],
+  "pictureUrl": "https://media.licdn.com/dms/image/v2/D4E03AQFclgijAVMx0Q/profile-displayphoto-crop_800_800/B4EaCbgC_LHoAI-/0/1789315264701?e=1795651200&v=beta&t=LD08XJPuDEJW0bR2MO8dszXOtOT-b6fR3p-asJt8bzA",
+  "location": {
+    "linkedinText": "London, England, United Kingdom"
+  },
+  "_meta": {
+    "pagination": {
+      "totalElements": 2244,
+      "totalPages": 90,
+      "pageNumber": 1,
+      "previousElements": 0,
+      "pageSize": 25
+    },
+    "scrapedAt": "2026-11-07T12:16:44.087Z"
+  },
+  "profileIdInSearch": "ACwAACmstvYBCQw6CFz-1SAkt0IFpGmac9c6xS4"
+},
+{
+  "id": "ACwAACG1vcsBU8sFhbQhB62V9WXcMXn2hSRvXY8",
+  "linkedinUrl": "https://www.linkedin.com/in/ACwAACG1vcsBU8sFhbQhB62V9WXcMXn2hSRvXY8",
+  "firstName": "Roshan",
+  "lastName": "Vashi",
+  "openProfile": false,
+  "premium": false,
+  "currentPositions": [
+    {
+      "tenureAtPosition": {
+        "numYears": 3,
+        "numMonths": 9
+      },
+      "companyName": "Vindis Group",
+      "title": "Senior Sales Executive",
+      "current": true,
+      "company": {
+        "entityUrn": "urn:li:fs_salesCompany:1729594",
+        "name": "Vindis Group",
+        "companyPictureDisplayImage": {
+          "rootUrl": "https://media.licdn.com/dms/image/v2/C560BAQEhUtJW9MwTRQ/company-logo_",
+          "artifacts": [
+            {
+              "width": 200,
+              "fileIdentifyingUrlPathSegment": "200_200/company-logo_200_200/0/1662663344846?e=1795651200&v=beta&t=BXQttOtX-8Ou6WdQyli2wjea0pz4gaQmtLqghol_yt4",
+              "height": 200
+            },
+            {
+              "width": 100,
+              "fileIdentifyingUrlPathSegment": "100_100/company-logo_100_100/0/1662663344846?e=1795651200&v=beta&t=PVBRQNcizbGgiuIT-AI0ge3XukZQeeFlUAgmxr1xkNU",
+              "height": 100
+            },
+            {
+              "width": 400,
+              "fileIdentifyingUrlPathSegment": "400_400/company-logo_400_400/0/1662663344846?e=1795651200&v=beta&t=ULXO1yXaA5u3zRZoVf1IpkeAF0cLmNg3EEDEsz_F8Lk",
+              "height": 400
+            }
+          ]
+        },
+        "industry": "Motor Vehicle Manufacturing",
+        "location": "Huntingdon, England, United Kingdom"
+      },
+      "tenureAtCompany": {
+        "numYears": 3,
+        "numMonths": 9
+      },
+      "startedOn": {
+        "month": 3,
+        "year": 2023
+      },
+      "companyId": "1729594",
+      "companyLinkedinUrl": "https://www.linkedin.com/company/1729594"
+    },
+    {
+      "tenureAtPosition": {
+        "numYears": 3,
+        "numMonths": 10
+      },
+      "companyName": "VINDIS AUTO-NOW SAWSTON",
+      "description": "Working in a team retailing all manufactures used vehicles.",
+      "title": "Senior Sales Executive",
+      "current": true,
+      "tenureAtCompany": {
+        "numYears": 3,
+        "numMonths": 10
+      },
+      "startedOn": {
+        "month": 2,
+        "year": 2023
+      }
+    }
+  ],
+  "pictureUrl": "https://media.licdn.com/dms/image/v2/D4E03AQFxBUyyq7SQoA/profile-displayphoto-crop_800_800/B4EZ0pwbFtIQAI-/0/1774522055690?e=1795651200&v=beta&t=-07QLzCpRwtAh7KDX7pE2iSZOkrhRS9EaFnmOrvhLaI",
+  "location": {
+    "linkedinText": "United Kingdom"
+  },
+  "_meta": {
+    "pagination": {
+      "totalElements": 2244,
+      "totalPages": 90,
+      "pageNumber": 1,
+      "previousElements": 0,
+      "pageSize": 25
+    },
+    "scrapedAt": "2026-11-07T12:16:44.087Z"
+  },
+  "profileIdInSearch": "ACwAACG1vcsBU8sFhbQhB62V9WXcMXn2hSRvXY8"
+},
+{
+  "id": "ACwAAAaOsiEBNkzC3NunRKye-FC3zalV9jL8Yqw",
+  "linkedinUrl": "https://www.linkedin.com/in/ACwAAAaOsiEBNkzC3NunRKye-FC3zalV9jL8Yqw",
+  "firstName": "Paul",
+  "lastName": "Reader",
+  "openProfile": false,
+  "premium": false,
+  "currentPositions": [
+    {
+      "tenureAtPosition": {
+        "numYears": 4,
+        "numMonths": 7
+      },
+      "companyName": "Graff",
+      "description": "As the Senior Sales Executive, I am responsible for a portfolio of clients. This involves looking to maximize potential sales by providing clients with updates of new products whilst utilising my subject expertise and product knowledge.\nMy role is varied to encompass client relationship management and strategy planning for sales. \nHighly experienced and self-driven executive with excellent business acumen, service focused with strong communication skills.\nExpertise in high jewellery and watch brands.",
+      "title": "Senior Sales Executive",
+      "current": true,
+      "company": {
+        "entityUrn": "urn:li:fs_salesCompany:796432",
+        "name": "Graff",
+        "companyPictureDisplayImage": {
+          "rootUrl": "https://media.licdn.com/dms/image/v2/D4E0BAQEKoh123nhNzQ/company-logo_",
+          "artifacts": [
+            {
+              "width": 200,
+              "fileIdentifyingUrlPathSegment": "200_200/company-logo_200_200/0/1727259533251/graff_logo?e=1795651200&v=beta&t=rPdU_R7vZdM5tmsi8gfJgPculKsxyqeuEStFBzY_EOo",
+              "height": 200
+            },
+            {
+              "width": 100,
+              "fileIdentifyingUrlPathSegment": "100_100/company-logo_100_100/0/1727259533251/graff_logo?e=1795651200&v=beta&t=sFNTuKfMVjPbOWj_RbRwJ9ab5RyJ_oRyhOUzwULwKus",
+              "height": 100
+            },
+            {
+              "width": 400,
+              "fileIdentifyingUrlPathSegment": "400_400/company-logo_400_400/0/1727259533251/graff_logo?e=1795651200&v=beta&t=4OSvdAllV8gV1r720ToQk2hxRfYHJ92FgNyNrgCZXM8",
+              "height": 400
+            }
+          ]
+        },
+        "industry": "Retail Luxury Goods and Jewelry",
+        "location": "London, England, United Kingdom"
+      },
+      "tenureAtCompany": {
+        "numYears": 4,
+        "numMonths": 7
+      },
+      "startedOn": {
+        "month": 5,
+        "year": 2022
+      },
+      "companyId": "796432",
+      "companyLinkedinUrl": "https://www.linkedin.com/company/796432"
+    }
+  ],
+  "pictureUrl": "https://media.licdn.com/dms/image/v2/D4E03AQElhD8JDpGylQ/profile-displayphoto-shrink_800_800/B4EZd59aCCGcAc-/0/1750097831919?e=1795651200&v=beta&t=S_8VABi_xTmqEAcZFMKD_lIJCqjdy2LCPY_HJVEXK74",
+  "location": {
+    "linkedinText": "London, England, United Kingdom"
+  },
+  "_meta": {
+    "pagination": {
+      "totalElements": 2244,
+      "totalPages": 90,
+      "pageNumber": 1,
+      "previousElements": 0,
+      "pageSize": 25
+    },
+    "scrapedAt": "2026-11-07T12:16:44.087Z"
+  },
+  "profileIdInSearch": "ACwAAAaOsiEBNkzC3NunRKye-FC3zalV9jL8Yqw"
+},
+{
+  "id": "ACwAAABVqncBl96MRITufUm0wGTd6XUxESqYXEU",
+  "linkedinUrl": "https://www.linkedin.com/in/ACwAAABVqncBl96MRITufUm0wGTd6XUxESqYXEU",
+  "firstName": "Sharifa ",
+  "lastName": "Sardal",
+  "openProfile": false,
+  "premium": false,
+  "currentPositions": [
+    {
+      "tenureAtPosition": {
+        "numYears": 2,
+        "numMonths": 4
+      },
+      "companyName": "FIS",
+      "title": "Senior Sales Executive",
+      "current": true,
+      "company": {
+        "entityUrn": "urn:li:fs_salesCompany:3128",
+        "name": "FIS",
+        "companyPictureDisplayImage": {
+          "rootUrl": "https://media.licdn.com/dms/image/v2/C4E0BAQEok08w8MNWeg/company-logo_",
+          "artifacts": [
+            {
+              "width": 200,
+              "fileIdentifyingUrlPathSegment": "200_200/company-logo_200_200/0/1630604009918/fis_logo?e=1795651200&v=beta&t=hjZz-9JT37El5pOxam8LABtBKH2DOlNlxZwnK4M9G2s",
+              "height": 200
+            },
+            {
+              "width": 100,
+              "fileIdentifyingUrlPathSegment": "100_100/company-logo_100_100/0/1630604009918/fis_logo?e=1795651200&v=beta&t=tjuqgSAtmAwwnNnBOASMV0rm49z_hWMdKRuYaZN3Cpg",
+              "height": 100
+            },
+            {
+              "width": 400,
+              "fileIdentifyingUrlPathSegment": "400_400/company-logo_400_400/0/1630604009918/fis_logo?e=1795651200&v=beta&t=daG6TgJQUauSASn3wwcuPddkYdCz0g-5Y91YDLPz770",
+              "height": 400
+            }
+          ]
+        },
+        "industry": "IT Services and IT Consulting",
+        "location": "Jacksonville, Florida, United States"
+      },
+      "tenureAtCompany": {
+        "numYears": 2,
+        "numMonths": 4
+      },
+      "startedOn": {
+        "month": 8,
+        "year": 2024
+      },
+      "companyId": "3128",
+      "companyLinkedinUrl": "https://www.linkedin.com/company/3128"
+    }
+  ],
+  "pictureUrl": "https://media.licdn.com/dms/image/v2/C5103AQEzOHWhv9y23A/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1516359306501?e=1795651200&v=beta&t=uBIzGKECf_e7_oND8xw1SWTPTFbucmpGLagRs5yDFqU",
+  "location": {
+    "linkedinText": "London, England, United Kingdom"
+  },
+  "_meta": {
+    "pagination": {
+      "totalElements": 2244,
+      "totalPages": 90,
+      "pageNumber": 1,
+      "previousElements": 0,
+      "pageSize": 25
+    },
+    "scrapedAt": "2026-11-07T12:16:44.087Z"
+  },
+  "profileIdInSearch": "ACwAAABVqncBl96MRITufUm0wGTd6XUxESqYXEU"
+},
+{
+  "id": "ACwAAAE-s38BJXBvWrodVAcxmzlFYrKGg1zkktg",
+  "linkedinUrl": "https://www.linkedin.com/in/ACwAAAE-s38BJXBvWrodVAcxmzlFYrKGg1zkktg",
+  "firstName": "Mark",
+  "lastName": "Symons",
+  "openProfile": false,
+  "premium": true,
+  "currentPositions": [
+    {
+      "tenureAtPosition": {
+        "numYears": 1,
+        "numMonths": 3
+      },
+      "companyName": "IONA",
+      "description": "IONA is a MACH certified commerce consultancy providing strategy, design and implementation services. Partnering with best of breed solutions including Ecommerce platforms, Content Management, PIM, Search & Merchandising and Martech to deliver exceptional customer experiences.",
+      "title": "Senior Sales Executive, UK",
+      "current": true,
+      "company": {
+        "entityUrn": "urn:li:fs_salesCompany:13974686",
+        "name": "IONA",
+        "companyPictureDisplayImage": {
+          "rootUrl": "https://media.licdn.com/dms/image/v2/D4D0BAQHNEuS4aBTpqQ/company-logo_",
+          "artifacts": [
+            {
+              "width": 100,
+              "fileIdentifyingUrlPathSegment": "100_100/B4DZoWUPP5JIAQ-/0/1761310995863/ionacommerce_logo?e=1795651200&v=beta&t=OE6eqMm75ssEz9rqun2BjDrpF7zTlGU_bX3-1QuUTSc",
+              "height": 100
+            },
+            {
+              "width": 400,
+              "fileIdentifyingUrlPathSegment": "400_400/B4DZoWUPP5JIAY-/0/1761310995863/ionacommerce_logo?e=1795651200&v=beta&t=YeNIShkWlxSfFa-rJEQHn8Lc1S03Y0QydG9HAMh_tLg",
+              "height": 400
+            },
+            {
+              "width": 200,
+              "fileIdentifyingUrlPathSegment": "200_200/B4DZoWUPP5JIAI-/0/1761310995863/ionacommerce_logo?e=1795651200&v=beta&t=wNnTq8LPTUTN1YOSKUQnUo1GrxzP3Zxij6ZjJ6ohmm4",
+              "height": 200
+            }
+          ]
+        },
+        "industry": "IT Services and IT Consulting",
+        "location": "Helsinki, Uusimaa, Finland"
+      },
+      "tenureAtCompany": {
+        "numYears": 1,
+        "numMonths": 3
+      },
+      "startedOn": {
+        "month": 9,
+        "year": 2025
+      },
+      "companyId": "13974686",
+      "companyLinkedinUrl": "https://www.linkedin.com/company/13974686"
+    }
+  ],
+  "pictureUrl": "https://media.licdn.com/dms/image/v2/D4E03AQFJ4PBlka49VQ/profile-displayphoto-crop_800_800/B4EZv5.aM0IIAI-/0/1769425446578?e=1795651200&v=beta&t=_ZO7WPt1q7JiuV_Mj9OdU9WPA5-tn26k8udSAXKzG3c",
+  "location": {
+    "linkedinText": "London, England, United Kingdom"
+  },
+  "_meta": {
+    "pagination": {
+      "totalElements": 2244,
+      "totalPages": 90,
+      "pageNumber": 1,
+      "previousElements": 0,
+      "pageSize": 25
+    },
+    "scrapedAt": "2026-11-07T12:16:44.086Z"
+  },
+  "profileIdInSearch": "ACwAAAE-s38BJXBvWrodVAcxmzlFYrKGg1zkktg"
+}]

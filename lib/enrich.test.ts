@@ -133,9 +133,12 @@ describe("enriched profile merge", () => {
       ],
     });
     assert.ok(saas && aviation);
+    saas.enriched = true;
+    aviation.enriched = true;
     const when = new Date("2026-11-07T00:00:00.000Z");
     const saasScore = scoreMatch(saas, spec, "verified", when);
     const aviationScore = scoreMatch(aviation, spec, "verified", when);
+    assert.ok(aviationScore.score <= 40);
     assert.ok(aviationScore.score < saasScore.score);
     const skills = aviationScore.criteria.find((item) => item.key === "skills");
     assert.match(skills?.reason ?? "", /Airlines\/Aviation/);

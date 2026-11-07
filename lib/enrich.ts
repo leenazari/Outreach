@@ -1,4 +1,4 @@
-import { isVanityLinkedInUrl } from "./linkedin";
+import { isVanityLinkedInUrl, memberKeysFrom } from "./linkedin";
 import type { RawCandidate } from "./types";
 import { canonicalName, canonicalProfileUrl, uniqueStrings } from "./text";
 
@@ -39,13 +39,19 @@ function urlKeys(record: RawCandidate): string[] {
   return uniqueStrings(keys);
 }
 
-function samePerson(target: RawCandidate, extra: RawCandidate): boolean {
-  if (idsOverlap(target.linkedinIds, extra.linkedinIds)) return true;
-  const left = new Set(urlKeys(target));
-  if (urlKeys(extra).some((url) => left.has(url))) return true;
+function namesAgree(target: RawCandidate, extra: RawCandidate): boolean {
   const name = canonicalName(extra.name);
   const targetName = canonicalName(target.name);
-  return Boolean(name && targetName && name === targetName && targetName !== UNPUBLISHED_NAME);
+  if (!name || !targetName || targetName === UNPUBLISHED_NAME || name === UNPUBLISHED_NAME) return false;
+  return name === targetName;
+}
+
+function samePerson(target: RawCandidate, extra: RawCandidate): boolean {
+  const memberHit = idsOverlap(memberKeysFrom(target.linkedinIds), memberKeysFrom(extra.linkedinIds));
+  const urlHit = urlKeys(extra).some((url) => new Set(urlKeys(target)).has(url));
+  if ((memberHit || urlHit) && namesAgree(target, extra)) return true;
+  if (memberHit && (!canonicalName(target.name) || !canonicalName(extra.name))) return true;
+  return false;
 }
 
 function preferUrl(current: string | null, incoming: string | null): string | null {
@@ -76,6 +82,7 @@ export function applyEnrichment(records: RawCandidate[], enriched: RawCandidate[
     if (extra.snippet) target.snippet = extra.snippet;
     if (!target.email && extra.email) target.email = extra.email;
     if (!target.photoUrl && extra.photoUrl) target.photoUrl = extra.photoUrl;
+    target.enriched = true;
     target.origins = [...(target.origins ?? []), ...(extra.origins ?? [])];
     target.recentlyChangedJobs = target.recentlyChangedJobs || extra.recentlyChangedJobs;
   }

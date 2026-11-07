@@ -1,7 +1,7 @@
 import { RESULT_LIMIT } from "./actors";
 import type { Candidate, ParsedSpec, RawCandidate, ScoreReason, SourceId, ValidationStatus } from "./types";
 import { canonicalName, canonicalProfileUrl, clip, haystackIncludes, uniqueStrings } from "./text";
-import { companyType, locationRegion } from "./identity";
+import { locationRegion } from "./identity";
 import { isVanityLinkedInUrl } from "./linkedin";
 import { scoreMatch } from "./match";
 import { validateProfile } from "./validate";
@@ -210,7 +210,6 @@ function scoreOne(record: RawCandidate, spec: ParsedSpec): Candidate | null {
     location: record.location || "Location not listed",
     locationRegion: locationRegion(record.location || ""),
     company: record.company?.trim() || record.experience?.find((role) => role.company)?.company || "",
-    companyType: companyType(record.title),
     experienceSummary: experienceSummary(record),
     skills,
     profileUrl: record.profileUrl,
@@ -254,6 +253,8 @@ export function rankCandidates(
 
   candidates.sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
+    const experience = (candidate: Candidate) => candidate.subscores.find((item) => item.key === "experience")?.score ?? -1;
+    if (experience(b) !== experience(a)) return experience(b) - experience(a);
     if (b.sources.length !== a.sources.length) return b.sources.length - a.sources.length;
     return (a.name ?? "").localeCompare(b.name ?? "");
   });

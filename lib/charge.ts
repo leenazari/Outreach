@@ -1,3 +1,4 @@
+import { ENRICH_ACTOR, INDEED_ACTOR, POST_ACTOR, PROFILE_ACTOR } from "./actors";
 import { allocateMicros, microsToUsd, usdToMicros } from "./money";
 import type { CostLine } from "./types";
 import { asRecord, asString } from "./text";
@@ -168,20 +169,50 @@ export function eventChargeUsd(run: ActorRunSnapshot): number | null {
   return microsToUsd(micros);
 }
 
+function chargeCount(run: ActorRunSnapshot): number {
+  return Object.values(run.chargedEventCounts ?? {}).reduce((sum, count) => sum + (count > 0 ? count : 0), 0);
+}
+
+function fallbackUnitUsd(actor: string, eventName: string): number | null {
+  if (actor === ENRICH_ACTOR) {
+    if (/email/i.test(eventName)) return 0.01;
+    if (/profile/i.test(eventName)) return 0.004;
+  }
+  if (actor === PROFILE_ACTOR && /search|page/i.test(eventName)) return 0.1;
+  if (actor === POST_ACTOR && /post/i.test(eventName)) return 0.002;
+  if (actor === INDEED_ACTOR && /resume/i.test(eventName)) return 0.049;
+  return null;
+}
+
 export function chargeIsSettled(run: ActorRunSnapshot): boolean {
   if (!run.status || !TERMINAL.has(run.status)) return false;
-  if (run.usageTotalUsd === null) return false;
+  if (run.usageTotalUsd === null || run.usageTotalUsd <= 0) return chargeCount(run) === 0 && run.usageTotalUsd === 0;
   if (accountingLag(run)) return false;
   const computed = eventChargeUsd(run);
   if (computed !== null && usdToMicros(computed) > usdToMicros(run.usageTotalUsd)) return false;
   return true;
 }
 
-export function withSettledUsageTotal(run: ActorRunSnapshot): ActorRunSnapshot {
-  const computed = eventChargeUsd(run);
-  if (computed === null) return run;
-  if (run.usageTotalUsd !== null && usdToMicros(run.usageTotalUsd) >= usdToMicros(computed)) return run;
-  return { ...run, usageTotalUsd: computed };
+export function withSettledUsageTotal(run: ActorRunSnapshot, actor?: string): ActorRunSnapshot {
+  const counts = run.chargedEventCounts ?? {};
+  let eventPrices = run.eventPrices;
+  if (actor) {
+    eventPrices = { ...eventPrices };
+    for (const [name, count] of Object.entries(counts)) {
+      if (count <= 0 || eventPrices[name]?.unitUsd != null) continue;
+      const unit = fallbackUnitUsd(actor, name);
+      if (unit === null) continue;
+      eventPrices[name] = { title: eventPrices[name]?.title || name, unitUsd: unit, oneTime: false };
+    }
+  }
+  const priced = eventChargeUsd({ ...run, eventPrices });
+  let usageTotalUsd = run.usageTotalUsd;
+  if (priced !== null && priced > 0 && (usageTotalUsd === null || usageTotalUsd < priced)) usageTotalUsd = priced;
+  if ((usageTotalUsd === null || usageTotalUsd <= 0) && chargeCount(run) > 0 && priced !== null && priced > 0) {
+    usageTotalUsd = priced;
+  }
+  if (usageTotalUsd === run.usageTotalUsd && eventPrices === run.eventPrices) return run;
+  return { ...run, eventPrices, usageTotalUsd };
 }
 
 function accountingLag(run: ActorRunSnapshot): boolean {
@@ -303,12 +334,20 @@ export function parseRunCharge(run: ActorRunSnapshot | null, itemCount: number):
   }
 
   const terminal = run.status ? TERMINAL.has(run.status) : false;
-  const total = run.usageTotalUsd;
-  if (!terminal || total === null) {
+  const computedTotal = eventChargeUsd(run);
+  const reported = run.usageTotalUsd;
+  const total =
+    reported !== null && reported > 0
+      ? reported
+      : computedTotal !== null && computedTotal > 0 && chargeCount(run) > 0
+        ? computedTotal
+        : reported;
+  if (!terminal || total === null || (total <= 0 && chargeCount(run) > 0)) {
+    const visible = total !== null && total > 0 ? total : null;
     return {
       settled: false,
-      totalUsd: total,
-      totalMicros: total === null ? null : usdToMicros(total),
+      totalUsd: visible,
+      totalMicros: visible === null ? null : usdToMicros(visible),
       lines: [],
       microLines: [],
       note: terminal

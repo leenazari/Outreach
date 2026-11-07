@@ -91,7 +91,6 @@ describe("Interviewa export", () => {
       location: "London",
       locationRegion: "London",
       company: "",
-      companyType: "Sales",
       experienceSummary: "1 dated role on the public record.",
       skills: ["B2B sales"],
       profileUrl: "https://www.linkedin.com/in/avery",

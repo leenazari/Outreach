@@ -1,5 +1,5 @@
 import { ACTOR_TIMEOUT_SECS } from "./actors";
-import { chargeIsSettled, readRunSnapshot, withSettledUsageTotal, type ActorRunSnapshot } from "./charge";
+import { readRunSnapshot, withSettledUsageTotal, type ActorRunSnapshot } from "./charge";
 import type { SourceId } from "./types";
 import { asRecord, asString } from "./text";
 
@@ -83,7 +83,6 @@ async function getDatasetItems(token: string, datasetId: string): Promise<unknow
 export function createApifyRunner(token: string, timeoutSecs = ACTOR_TIMEOUT_SECS): ActorRunner {
   return async (actor, input, options) => {
     const timeout = options?.timeoutSecs ?? timeoutSecs;
-    const settleWaitMs = options?.settleWaitMs ?? 10_000;
     const started = Date.now();
     const deadline = started + (timeout + 20) * 1000;
     const response = await fetch(buildActorRunsUrl(actor, timeout), {
@@ -114,19 +113,19 @@ export function createApifyRunner(token: string, timeoutSecs = ACTOR_TIMEOUT_SEC
     }
 
     if (run.status && TERMINAL.has(run.status)) {
-      const budget = Math.min(Math.max(settleWaitMs, 8_000), Math.max(0, deadline - Date.now()));
-      const settleBy = Date.now() + budget;
+      const settleBy = Math.min(Date.now() + 20_000, deadline);
       let previous = "";
       while (Date.now() < settleBy) {
-        const signature = `${run.usageTotalUsd ?? ""}:${JSON.stringify(run.chargedEventCounts)}:${JSON.stringify(run.accountedChargedEventCounts)}`;
-        if (chargeIsSettled(run) && signature === previous) break;
+        const signature = `${run.usageTotalUsd ?? ""}:${JSON.stringify(run.chargedEventCounts)}`;
+        const usageReady = TERMINAL.has(run.status ?? "") && run.usageTotalUsd !== null && run.usageTotalUsd > 0;
+        if (usageReady && signature === previous) break;
         previous = signature;
         const pause = Math.min(2_000, settleBy - Date.now());
         if (pause <= 0) break;
         await sleep(pause);
         run = (await getActorRun(token, run.id)) ?? run;
       }
-      run = withSettledUsageTotal(run);
+      run = withSettledUsageTotal(run, actor);
     }
 
     const items = run.defaultDatasetId ? await getDatasetItems(token, run.defaultDatasetId) : [];

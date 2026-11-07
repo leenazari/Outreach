@@ -16,15 +16,27 @@ const MONTHS: Record<string, number> = {
   dec: 12,
 };
 
-export function parseYearMonth(value: unknown): string | null {
-  if (typeof value === "number" && value >= 1950 && value <= 2100) return `${value}-01`;
+function monthNumber(value: unknown): number | null {
+  if (typeof value === "number" && value >= 1 && value <= 12) return value;
+  if (typeof value === "string") {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric) && numeric >= 1 && numeric <= 12) return numeric;
+    const named = MONTHS[value.slice(0, 3).toLowerCase()];
+    if (named) return named;
+  }
+  return null;
+}
+
+export function parseYearMonth(value: unknown, edge: "start" | "end" = "start"): string | null {
+  const missingMonth = edge === "end" ? 12 : 1;
+  if (typeof value === "number" && value >= 1950 && value <= 2100) return `${value}-${String(missingMonth).padStart(2, "0")}`;
   if (typeof value === "string") {
     const text = value.trim();
     if (!text || /present|current|now/i.test(text)) return null;
     const iso = /^(\d{4})-(\d{2})/.exec(text);
     if (iso) return `${iso[1]}-${iso[2]}`;
     const yearOnly = /^(\d{4})$/.exec(text);
-    if (yearOnly) return `${yearOnly[1]}-01`;
+    if (yearOnly) return `${yearOnly[1]}-${String(missingMonth).padStart(2, "0")}`;
     const named = /([A-Za-z]{3,9})\s+(\d{4})/.exec(text) ?? /(\d{4})\s+([A-Za-z]{3,9})/.exec(text);
     if (named) {
       const monthName = /[A-Za-z]/.test(named[1] ?? "") ? named[1] : named[2];
@@ -38,10 +50,11 @@ export function parseYearMonth(value: unknown): string | null {
   if (!record) return null;
   const text = asString(record.text);
   if (/present|current|now/i.test(text) && record.year == null) return null;
+  const namedText = text && /[A-Za-z]/.test(text) ? parseYearMonth(text, edge) : null;
+  if (namedText) return namedText;
   const year = typeof record.year === "number" ? record.year : Number(record.year);
-  if (!Number.isFinite(year) || year < 1950 || year > 2100) return parseYearMonth(text);
-  const monthRaw = typeof record.month === "number" ? record.month : Number(record.month);
-  const month = Number.isFinite(monthRaw) && monthRaw >= 1 && monthRaw <= 12 ? monthRaw : 1;
+  if (!Number.isFinite(year) || year < 1950 || year > 2100) return text ? parseYearMonth(text, edge) : null;
+  const month = monthNumber(record.month) ?? missingMonth;
   return `${year}-${String(month).padStart(2, "0")}`;
 }
 
@@ -70,8 +83,8 @@ export function readWorkRoles(
         asString(entry.locationName) ||
         (typeof entry.location === "string" ? entry.location : asString(asRecord(entry.location)?.linkedinText));
       const current = entry.current === true || /present|current/i.test(asString(entry.endDateText));
-      const start = parseYearMonth(entry.startDate ?? entry.startedOn ?? entry.start ?? entry.dateFrom);
-      const end = current ? null : parseYearMonth(entry.endDate ?? entry.endedOn ?? entry.end ?? entry.dateTo);
+      const start = parseYearMonth(entry.startDate ?? entry.startedOn ?? entry.start ?? entry.dateFrom, "start");
+      const end = current ? null : parseYearMonth(entry.endDate ?? entry.endedOn ?? entry.end ?? entry.dateTo, "end");
       const detail = clip(asString(entry.description) || asString(entry.summary), 240);
       if (!title && !company) continue;
       const key = `${title}|${company}|${start ?? ""}|${end ?? ""}`.toLowerCase();
