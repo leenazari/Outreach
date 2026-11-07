@@ -81,7 +81,7 @@ After the short-profile score, the people are sorted by score and the top `ENRIC
 }
 ```
 
-You can speak the spec. A microphone button uses the browser Web Speech API (`en-GB`) and shows the live transcript. The recording is sent to `POST /api/parse-spec`, which fills the form for review. It does not start a search. While the mic is listening, “pause” or “pause bot” stops adding words and shows **Paused**. “continue”, “unpause”, or “unpause bot” resumes. Those words are never written into the spec. If `OPENAI_API_KEY` is set, `gpt-4o-mini` extracts the fields as JSON. If it is missing, or the model call fails, a built-in parser reads salaries, UK city names, and phrases after “must have”, “needs”, “essential”, “nice to have”, “ideally”, and “bonus”. That fallback does not switch the search into sample mode.
+You can dictate the spec. **Start recording** uses the browser Web Speech API (`en-GB`) and shows a recording indicator with the live words. **Stop recording** puts that transcript into the job spec box, where it can be edited. It does not start a search. On Android the recogniser runs one utterance at a time and restarts while recording is still on, and cumulative interim results replace the previous interim instead of being appended. If `OPENAI_API_KEY` is set, `gpt-4o-mini` extracts the fields as JSON when the search runs. If it is missing, or the model call fails, a built-in parser reads salaries, UK city names, and phrases after “must have”, “needs”, “essential”, “nice to have”, “ideally”, and “bonus”. That fallback does not switch the search into sample mode.
 
 ## Live only
 
@@ -198,8 +198,6 @@ The route starts each actor with `POST /v2/acts/{actorId}/runs`, polls `GET /v2/
 - **Short profiles.** The first profile search uses Short mode. Work-history dates usually come from the later profile-detail call, and only for people who already made the shortlist.
 - **Keyword match is literal.** "Figma" matches a substring. It does not understand synonyms.
 - **Name dedupe can collapse two people** who share a normalised name.
-- **Pause words are commands.** Saying “continue” or “pause” while dictating a spec will not type those words. Phrase the sentence without them.
-
 ## Project layout
 
 - `app/page.tsx` — recruiter UI. The spec box starts empty.
@@ -207,7 +205,7 @@ The route starts each actor with `POST /v2/acts/{actorId}/runs`, polls `GET /v2/
 - `app/api/search/route.ts` — candidate search
 - `app/api/parse-spec/route.ts` — spoken spec parser
 - `lib/parse-speech.ts` — OpenAI JSON extraction and the rule-based fallback
-- `lib/speech-control.ts` — pause and resume words
+- `lib/speech-control.ts` — speech transcript reducer
 - `lib/actors.ts` — actor ids, limits, and input builders
 - `lib/apify.ts` — REST client
 - `lib/charge.ts` — `usageTotalUsd` and the event breakdown
