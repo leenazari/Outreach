@@ -111,7 +111,7 @@ function Ready({ result }: { result: SearchResponse }) {
 
       <p className="text-sm leading-6 text-muted-foreground">
         {result.stats.collected} records collected · {result.stats.afterDedupe} after dedupe ·{" "}
-        {result.stats.droppedForMustHave} dropped for a missing must-have · {result.stats.returned} ranked
+        {result.stats.droppedForMustHave} dropped for a country contradiction · {result.stats.returned} ranked
         {result.spec.salaryLabel !== "Not specified" ? ` · Salary ${result.spec.salaryLabel} not scored` : ""}
       </p>
       <p className="text-sm leading-6 text-muted-foreground">
@@ -149,10 +149,11 @@ function Ready({ result }: { result: SearchResponse }) {
 
       {result.candidates.length === 0 ? (
         <div className="rounded-2xl border border-border bg-card p-5">
-          <h2 className="font-serif text-2xl tracking-tight">No one matched every must-have</h2>
+          <h2 className="font-serif text-2xl tracking-tight">No one was left in this search</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            {result.stats.droppedForMustHave} profile{result.stats.droppedForMustHave === 1 ? "" : "s"} failed the
-            keyword gate. Broaden a must-have, or move it to nice-to-have, and search again.
+            {result.stats.droppedForMustHave} profile{result.stats.droppedForMustHave === 1 ? "" : "s"} listed a
+            different country from the spec. Everyone else is scored, including people whose short profile did not
+            mention a requirement.
           </p>
         </div>
       ) : (

@@ -48,20 +48,9 @@ export async function POST(request: Request) {
       const message = error instanceof Error ? error.message : "The job spec could not be parsed.";
       return NextResponse.json({ error: publicError(message) }, { status: 502 });
     }
-    if (!spoken.jobTitle) {
-      return NextResponse.json(
-        { error: "No job title found in that spec. Name the role, for example “Sales Executive in London”." },
-        { status: 400 },
-      );
-    }
-    if (!spoken.location) {
-      return NextResponse.json(
-        { error: "No location found in that spec. Include a city or country." },
-        { status: 400 },
-      );
-    }
+    const fallbackTitle = cleanFirstLine(specText);
     spec = {
-      jobTitle: spoken.jobTitle,
+      jobTitle: spoken.jobTitle || fallbackTitle,
       location: spoken.location,
       salaryMin: spoken.salaryMin,
       salaryMax: spoken.salaryMax,
@@ -71,13 +60,19 @@ export async function POST(request: Request) {
       watchPhrases: parsePhraseList(record ? asString(record.watchPhrases) : "", 3),
       useSampleData: false,
       includeIndeed,
+      recentlyChangedJobs: record?.recentlyChangedJobs === true,
     };
   } else {
     const parsed = parseSearchRequest(body);
     if (!parsed.ok) {
       return NextResponse.json({ error: parsed.error }, { status: 400 });
     }
-    spec = { ...parsed.spec, useSampleData: false, includeIndeed };
+    spec = {
+      ...parsed.spec,
+      useSampleData: false,
+      includeIndeed,
+      recentlyChangedJobs: record?.recentlyChangedJobs === true,
+    };
   }
 
   try {
@@ -93,6 +88,13 @@ export async function POST(request: Request) {
     console.error("candidate search failed");
     return NextResponse.json({ error: publicError(message) }, { status });
   }
+}
+
+function cleanFirstLine(text: string): string {
+  const firstLine = text.split(/\n/)[0] ?? text;
+  const firstClause = firstLine.split(",")[0] ?? firstLine;
+  const title = firstClause.replace(/^[\s,:;.-]+|[\s,:;.-]+$/g, "").replace(/\s+/g, " ").trim();
+  return title || text.trim().slice(0, 120);
 }
 
 function publicError(message: string): string {

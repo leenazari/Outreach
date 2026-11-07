@@ -88,7 +88,23 @@ function datedMonths(record: RawCandidate, now: Date): number {
   return total;
 }
 
+const UNKNOWN = "not in short profile";
+
+function titleKnown(record: RawCandidate): boolean {
+  const title = record.title.trim();
+  return Boolean(title) && !/^(title not listed|linkedin member|resume)$/i.test(title);
+}
+
 function titleScore(spec: ParsedSpec, record: RawCandidate): MatchCriterion {
+  if (!titleKnown(record)) {
+    return {
+      key: "title",
+      label: CRITERION_LABEL.title,
+      weight: MATCH_WEIGHTS.title,
+      score: 50,
+      reason: UNKNOWN,
+    };
+  }
   const wanted = tokens(spec.jobTitle);
   const have = normaliseForMatch(record.title);
   const score = wanted.length === 0 ? 100 : coverage(wanted, have);
@@ -119,32 +135,45 @@ function skillsScore(spec: ParsedSpec, record: RawCandidate): MatchCriterion {
       reason: "The spec did not name skills to check.",
     };
   }
-  const hits = phrases.filter((phrase) => haystackIncludes(record.haystack, phrase));
-  const score = Math.round((hits.length / phrases.length) * 100);
+  const detailed = record.detailOnRecord === true;
+  let points = 0;
+  let unknown = 0;
+  let hits = 0;
+  for (const phrase of phrases) {
+    if (haystackIncludes(record.haystack, phrase)) {
+      points += 100;
+      hits += 1;
+    } else if (!detailed) {
+      points += 50;
+      unknown += 1;
+    }
+  }
+  const score = Math.round(points / phrases.length);
   return {
     key: "skills",
     label: CRITERION_LABEL.skills,
     weight: MATCH_WEIGHTS.skills,
     score,
     reason:
-      hits.length === phrases.length
-        ? "Every named skill or requirement appears on the public record."
-        : `${hits.length} of ${phrases.length} named skills or requirements appear on the public record.`,
+      unknown === phrases.length
+        ? UNKNOWN
+        : hits === phrases.length
+          ? "Every named skill or requirement appears on the public record."
+          : unknown > 0
+            ? "Some requirements are not in the short profile."
+            : `${hits} of ${phrases.length} named skills or requirements appear on the public record.`,
   };
 }
 
 function experienceScore(spec: ParsedSpec, record: RawCandidate, now: Date): MatchCriterion {
   const months = datedMonths(record, now);
   const yearsNeeded = yearRequirement(spec.mustHave);
-  let score = 20;
-  let reason = "No dated experience was on the public record.";
+  let score = 50;
+  let reason = UNKNOWN;
   if (yearsNeeded) {
     const needed = yearsNeeded * 12;
-    score = months <= 0 ? 20 : Math.min(100, Math.round((months / needed) * 100));
-    reason =
-      months <= 0
-        ? `The spec asks for ${yearsNeeded} years, and no dates were available.`
-        : `Dated experience covers ${months} months against ${yearsNeeded} years named in the spec.`;
+    score = months <= 0 ? 50 : Math.min(100, Math.round((months / needed) * 100));
+    reason = months <= 0 ? UNKNOWN : `Dated experience covers ${months} months against ${yearsNeeded} years named in the spec.`;
   } else if (months >= 24) {
     score = 100;
     reason = "Dated experience covers at least two years.";
@@ -168,6 +197,15 @@ function locationScore(spec: ParsedSpec, record: RawCandidate): MatchCriterion {
       reason: "The spec did not name a place.",
     };
   }
+  if (!record.location.trim()) {
+    return {
+      key: "location",
+      label: CRITERION_LABEL.location,
+      weight: MATCH_WEIGHTS.location,
+      score: 50,
+      reason: UNKNOWN,
+    };
+  }
   const same =
     haystackIncludes(record.location, spec.location) || haystackIncludes(spec.location, record.location);
   const score = same ? 100 : coverage(tokens(spec.location), normaliseForMatch(record.location));
@@ -181,6 +219,15 @@ function locationScore(spec: ParsedSpec, record: RawCandidate): MatchCriterion {
 }
 
 function seniorityScore(spec: ParsedSpec, record: RawCandidate): MatchCriterion {
+  if (!titleKnown(record)) {
+    return {
+      key: "seniority",
+      label: CRITERION_LABEL.seniority,
+      weight: MATCH_WEIGHTS.seniority,
+      score: 50,
+      reason: UNKNOWN,
+    };
+  }
   const gap = Math.abs(seniority(record.title) - seniority(spec.jobTitle));
   const score = gap === 0 ? 100 : gap === 1 ? 75 : gap === 2 ? 45 : 20;
   return {
@@ -215,10 +262,12 @@ function recencyScore(record: RawCandidate, now: Date): MatchCriterion {
     key: "recency",
     label: CRITERION_LABEL.recency,
     weight: MATCH_WEIGHTS.recency,
-    score: fresh ? 80 : (record.experience?.length ?? 0) > 0 ? 45 : 20,
+    score: fresh ? 80 : (record.experience?.length ?? 0) > 0 ? 45 : 50,
     reason: fresh
       ? "The current role started within the last 18 months."
-      : "No recent job change was on the public record.",
+      : (record.experience?.length ?? 0) > 0
+        ? "No recent job change was on the public record."
+        : UNKNOWN,
   };
 }
 

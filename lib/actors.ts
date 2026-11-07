@@ -32,15 +32,15 @@ export function buildActorPlans(spec: ParsedSpec): ActorPlan[] {
     {
       actor: PROFILE_ACTOR,
       purpose:
-        "People whose current title and location match the spec, limited to those who changed jobs in the last 90 days. Short profiles keep the search on one results page.",
+        "People whose current title and location match the spec. Short profiles keep the search on one results page. The recent-job-change filter is off unless the form turns it on.",
       skipped: false,
       input: {
         profileScraperMode: "Short",
         searchQuery: spec.jobTitle,
         maxItems: PROFILE_MAX_ITEMS,
-        locations: [spec.location],
+        ...(spec.location ? { locations: [spec.location] } : {}),
         currentJobTitles: [spec.jobTitle],
-        recentlyChangedJobs: true,
+        recentlyChangedJobs: spec.recentlyChangedJobs === true,
         takePages: 1,
       },
     },
@@ -64,7 +64,7 @@ export function buildActorPlans(spec: ParsedSpec): ActorPlan[] {
     {
       actor: INDEED_ACTOR,
       purpose:
-        "Best-effort Indeed resume search for at most three resumes. The actor requires a US residential proxy even when the role is elsewhere, and the site may require an employer login. Skipped when Include Indeed is off.",
+        "Experimental Indeed resume search for at most three resumes. The actor requires a US residential proxy, often returns nothing, and a failed start is still billed. Skipped when Include Indeed is off.",
       skipped: spec.includeIndeed === false,
       input: spec.includeIndeed === false ? null : {
         startUrls: [{ url: buildIndeedResumeSearchUrl(spec.jobTitle, spec.location) }],

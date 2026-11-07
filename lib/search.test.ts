@@ -60,7 +60,7 @@ describe("actor inputs", () => {
       maxItems: 10,
       locations: ["London"],
       currentJobTitles: ["Senior Product Designer"],
-      recentlyChangedJobs: true,
+      recentlyChangedJobs: false,
       takePages: 1,
     });
     assert.equal(JSON.stringify(profile?.input).includes("email"), false);
@@ -128,36 +128,32 @@ describe("ranking", () => {
 
     assert.equal(calls, 0);
     assert.equal(result.mode, "sample");
-    assert.deepEqual(
-      result.candidates.map((candidate) => [candidate.name, candidate.score, candidate.unlocked]),
-      [
-        ["Avery Lang", 96, true],
-        ["Priya Shah", 92, true],
-        [null, 86, true],
-        [null, 49, false],
-      ],
-    );
-    assert.equal(result.candidates[2]?.cvFound, true);
-    assert.match(result.candidates[2]?.identityNote ?? "", /Indeed/);
-    assert.equal(JSON.stringify(result.candidates[3]).includes("Morgan"), false);
-    assert.deepEqual(
-      result.candidates.map((candidate) => candidate.validation.status),
-      ["verified", "review", "review", "risk"],
-    );
+    const avery = result.candidates.find((candidate) => candidate.name === "Avery Lang");
+    const locked = result.candidates.find((candidate) => candidate.validation.status === "risk");
+    const indeed = result.candidates.find((candidate) => candidate.cvFound && candidate.sources.every((source) => source === "indeed-resume"));
+    assert.equal(avery?.unlocked, true);
+    assert.ok((avery?.score ?? 0) >= 80);
+    assert.equal(avery?.validation.status, "verified");
+    assert.equal(indeed?.name, null);
+    assert.match(indeed?.identityNote ?? "", /Indeed/);
+    assert.equal(locked?.unlocked, false);
+    assert.ok((locked?.score ?? 100) <= 49);
+    assert.equal(JSON.stringify(locked).includes("Morgan"), false);
     assert.equal(matchIsOpen(80), true);
     assert.equal(matchIsOpen(79), false);
     assert.equal(result.spend.totalUsd, 0);
     assert.equal(result.spend.settled, true);
     assert.equal(result.stats.collected, 8);
     assert.equal(result.stats.afterDedupe, 6);
-    assert.equal(result.stats.droppedForMustHave, 2);
-    assert.equal(result.candidates[0]?.sources.length, 2);
-    assert.equal(result.candidates[0]?.recentlyChangedJobs, true);
-    assert.equal(result.candidates[0]?.competitorOrComplaintPost, true);
-    assert.equal(result.candidates[0]?.subscores.length, 6);
+    assert.equal(result.stats.droppedForMustHave, 0);
+    assert.equal(result.stats.returned, 6);
+    assert.equal(avery?.sources.length, 2);
+    assert.equal(avery?.recentlyChangedJobs, true);
+    assert.equal(avery?.competitorOrComplaintPost, true);
+    assert.equal(avery?.subscores.length, 6);
     assert.equal(result.candidates.every((candidate) => candidate.sample), true);
-    assert.match(result.candidates[0]?.why.map((reason) => reason.label).join(" "), /Must-have: Figma/);
-    assert.match(result.candidates[0]?.why.map((reason) => reason.label).join(" "), /Greenhouse/);
+    assert.match(avery?.why.map((reason) => reason.label).join(" ") ?? "", /Must-have: Figma/);
+    assert.match(avery?.why.map((reason) => reason.label).join(" ") ?? "", /Greenhouse/);
   });
 
   it("matches phrases case-insensitively and dedupes by name and profile URL", () => {
@@ -185,8 +181,31 @@ describe("ranking", () => {
       spec,
     );
 
+    const short = rankCandidates(
+      [
+        raw({
+          name: "Samira Okonkwo",
+          title: "Sales Executive",
+          location: "London",
+          haystack: "Sales Executive\nLondon",
+          profileUrl: "https://www.linkedin.com/in/samira",
+        }),
+        raw({
+          name: "Alex Martin",
+          title: "Sales Executive",
+          location: "Paris, France",
+          haystack: "Sales Executive\nParis, France",
+          profileUrl: "https://www.linkedin.com/in/alex",
+        }),
+      ],
+      { ...spec, jobTitle: "Sales Executive", location: "London", mustHave: ["rare skill"] },
+    );
+    assert.equal(short.droppedForMustHave, 1);
+    assert.equal(short.candidates.length, 1);
+    assert.equal(short.candidates[0]?.subscores.find((item) => item.key === "skills")?.reason, "not in short profile");
+
     assert.equal(ranked.afterDedupe, 1);
-    assert.equal(ranked.candidates[0]?.score, 80);
+    assert.equal(ranked.candidates[0]?.score, 88);
     assert.equal(ranked.candidates[0]?.validation.status, "review");
     assert.deepEqual(ranked.candidates[0]?.sources, ["indeed-resume", "linkedin-profile"]);
     assert.equal(dedupeCandidates([]).length, 0);
@@ -250,8 +269,9 @@ describe("live failures", () => {
     );
 
     assert.equal(result.mode, "live");
-    assert.deepEqual(calls.sort(), [ENRICH_ACTOR, INDEED_ACTOR, POST_ACTOR, PROFILE_ACTOR].sort());
-    assert.equal(result.candidates.some((candidate) => candidate.name === "Avery Lang"), true);
+    assert.deepEqual(calls.sort(), [INDEED_ACTOR, POST_ACTOR, PROFILE_ACTOR].sort());
+    assert.equal(result.candidates.length > 0, true);
+    assert.equal(result.candidates.some((candidate) => candidate.name === "Avery Lang"), false);
     assert.equal(result.candidates.some((candidate) => candidate.sample), false);
     assert.equal(
       result.candidates.some((candidate) => JSON.stringify(candidate).includes("avery@example.com")),

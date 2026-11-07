@@ -74,6 +74,7 @@ function mergeCandidate(existing: RawCandidate, incoming: RawCandidate): void {
     ...incoming.matchedWatchPhrases,
   ]);
   existing.sample = existing.sample && incoming.sample;
+  existing.detailOnRecord = existing.detailOnRecord || incoming.detailOnRecord;
   if (!existing.sourceUrl && incoming.sourceUrl) existing.sourceUrl = incoming.sourceUrl;
   if (!existing.email && incoming.email) existing.email = incoming.email;
   if (!existing.photoUrl && incoming.photoUrl) existing.photoUrl = incoming.photoUrl;
@@ -121,6 +122,42 @@ export function dedupeCandidates(records: RawCandidate[]): RawCandidate[] {
   return order;
 }
 
+const COUNTRIES: { name: string; pattern: RegExp }[] = [
+  {
+    name: "United Kingdom",
+    pattern:
+      /\b(united kingdom|england|scotland|wales|northern ireland|london|manchester|birmingham|leeds|glasgow|edinburgh|bristol|liverpool|sheffield|newcastle|nottingham|cardiff|belfast|leicester|coventry|brighton|oxford|cambridge|reading|southampton|portsmouth|york|bath|aberdeen|dundee|swansea|plymouth|derby|uk)\b/i,
+  },
+  {
+    name: "United States",
+    pattern: /\b(united states|usa|u\.s\.a?\.|new york|san francisco|los angeles|chicago|boston|seattle|austin|texas|california)\b/i,
+  },
+  { name: "Ireland", pattern: /\b(ireland|dublin|cork)\b/i },
+  { name: "France", pattern: /\b(france|paris|lyon)\b/i },
+  { name: "Germany", pattern: /\b(germany|berlin|munich|hamburg)\b/i },
+  { name: "Netherlands", pattern: /\b(netherlands|amsterdam)\b/i },
+  { name: "Canada", pattern: /\b(canada|toronto|vancouver|montreal)\b/i },
+  { name: "Australia", pattern: /\b(australia|sydney|melbourne)\b/i },
+  { name: "India", pattern: /\b(india|bangalore|bengaluru|mumbai|delhi)\b/i },
+  { name: "Singapore", pattern: /\bsingapore\b/i },
+  { name: "United Arab Emirates", pattern: /\b(united arab emirates|dubai|abu dhabi)\b/i },
+];
+
+function countryOf(location: string): string | null {
+  for (const country of COUNTRIES) {
+    if (country.pattern.test(location)) return country.name;
+  }
+  return null;
+}
+
+export function countryContradiction(candidateLocation: string, specLocation: string): boolean {
+  if (!candidateLocation.trim() || !specLocation.trim()) return false;
+  const theirs = countryOf(candidateLocation);
+  const wanted = countryOf(specLocation);
+  if (!theirs || !wanted) return false;
+  return theirs !== wanted;
+}
+
 function experienceSummary(record: RawCandidate): string {
   const months = (record.experience ?? []).filter((role) => role.start).length;
   if (months === 0) return "Experience length was not dated on the public record.";
@@ -128,8 +165,9 @@ function experienceSummary(record: RawCandidate): string {
 }
 
 function scoreOne(record: RawCandidate, spec: ParsedSpec, threshold: number): Candidate | null {
+  if (countryContradiction(record.location, spec.location)) return null;
+
   const matchedMustHaves = spec.mustHave.filter((phrase) => haystackIncludes(record.haystack, phrase));
-  if (spec.mustHave.length > 0 && matchedMustHaves.length !== spec.mustHave.length) return null;
 
   const matchedNiceToHaves = spec.niceToHave.filter((phrase) => haystackIncludes(record.haystack, phrase));
   const why: ScoreReason[] = matchedMustHaves.map((phrase) => ({

@@ -35,6 +35,19 @@ describe("spoken spec parser", () => {
     assert.equal(parseSpokenSpecRules("bonus: company car").niceToHave, "company car");
   });
 
+  it("reads a pasted spec that does not say looking for", () => {
+    const parsed = parseSpokenSpecRules(
+      "Senior Sales Executive, B2B SaaS, London, 3+ years new business sales, CRM experience, recruiting or HR tech a plus",
+    );
+    assert.equal(parsed.jobTitle, "Senior Sales Executive");
+    assert.equal(parsed.location, "London");
+    assert.match(parsed.mustHave, /B2B SaaS/);
+    assert.match(parsed.mustHave, /3\+ years new business sales/);
+    assert.match(parsed.mustHave, /CRM experience/);
+    assert.match(parsed.niceToHave, /recruiting or HR tech/);
+    assert.equal(parsed.jobTitle.length > 0, true);
+  });
+
   it("uses the rule parser when no OpenAI key is set", async () => {
     const parsed = await interpretTranscript(
       "I'm looking for a sales guy in London, 45 grand, must have B2B experience",

@@ -40,10 +40,30 @@ const UK_PLACES = [
   "Derby",
   "Milton Keynes",
   "United Kingdom",
+  "New York",
+  "San Francisco",
+  "Los Angeles",
+  "Chicago",
+  "Boston",
+  "Seattle",
+  "Austin",
+  "Dublin",
+  "Paris",
+  "Berlin",
+  "Munich",
+  "Amsterdam",
+  "Toronto",
+  "Vancouver",
+  "Sydney",
+  "Melbourne",
+  "Singapore",
+  "Dubai",
+  "Bangalore",
+  "Mumbai",
 ];
 
 const MUST_CUE = String.raw`\b(?:must(?:\s*-\s*|\s+)haves?|needs|essential|required)\b`;
-const NICE_CUE = String.raw`\b(?:nice(?:\s*-\s*|\s+)to(?:\s*-\s*|\s+)haves?|ideally|bonus|preferably)\b`;
+const NICE_CUE = String.raw`\b(?:nice(?:\s*-\s*|\s+)to(?:\s*-\s*|\s+)haves?|ideally|bonus|preferably|preferred|a\s+plus)\b`;
 
 const OPENAI_MODEL = "gpt-4o-mini";
 
@@ -125,7 +145,10 @@ export function extractTitle(text: string): string {
     /\blooking\s+for\s+(?:an?\s+)?(.+?)(?=\s+in\s+[A-Za-z]|\s*,|\s+must\b|\s+needs\b|\s+essential\b|\s+who\b|$)/i.exec(
       text,
     );
-  return match?.[1] ? cleanPhrase(match[1]) : "";
+  if (match?.[1]) return cleanPhrase(match[1]);
+  const firstLine = text.split(/\n/)[0] ?? text;
+  const firstClause = firstLine.split(",")[0] ?? firstLine;
+  return cleanPhrase(firstClause) || cleanPhrase(firstLine);
 }
 
 function findCues(text: string): Cue[] {
@@ -173,18 +196,48 @@ export function extractRequirements(text: string): { mustHave: string[]; niceToH
   return { mustHave, niceToHave };
 }
 
+function samePhrase(left: string, right: string): boolean {
+  return left.toLowerCase() === right.toLowerCase();
+}
+
+function clausesBeyondTitle(text: string, title: string, location: string): { mustHave: string[]; niceToHave: string[] } {
+  const mustHave: string[] = [];
+  const niceToHave: string[] = [];
+  const nicePattern = new RegExp(NICE_CUE, "i");
+  for (const part of text.split(/[\n,;]/)) {
+    const clause = cleanPhrase(part);
+    if (!clause || samePhrase(clause, title) || (location && samePhrase(clause, location))) continue;
+    if (extractSalary(clause).salaryMin && clause.length < 40) continue;
+    if (nicePattern.test(clause)) {
+      const phrase = cleanPhrase(clause.replace(nicePattern, ""));
+      if (phrase) niceToHave.push(phrase);
+      continue;
+    }
+    mustHave.push(clause);
+  }
+  return { mustHave, niceToHave };
+}
+
 export function parseSpokenSpecRules(transcript: string): Omit<SpokenSpec, "parser"> {
   const text = transcript.replace(/\s+/g, " ").trim();
   const salary = extractSalary(text);
-  const requirements = extractRequirements(text);
+  const cued = extractRequirements(text);
+  const title = extractTitle(text) || cleanPhrase(text.split(/[\n,]/)[0] ?? text);
+  const location = extractLocation(text);
+  const listed =
+    !/\blooking\s+for\b/i.test(text) && cued.mustHave.length === 0
+      ? clausesBeyondTitle(text, title, location)
+      : { mustHave: [], niceToHave: [] };
+  const mustHave = [...cued.mustHave, ...listed.mustHave];
+  const niceToHave = [...cued.niceToHave, ...listed.niceToHave];
   return {
-    jobTitle: extractTitle(text),
-    location: extractLocation(text),
+    jobTitle: title,
+    location,
     salaryMin: salary.salaryMin,
     salaryMax: salary.salaryMax,
     salaryCurrency: salary.salaryCurrency,
-    mustHave: requirements.mustHave.join("\n"),
-    niceToHave: requirements.niceToHave.join("\n"),
+    mustHave: mustHave.join("\n"),
+    niceToHave: niceToHave.join("\n"),
   };
 }
 

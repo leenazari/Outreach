@@ -26,6 +26,7 @@ export type SearchRequest = {
   includeIndeed: boolean;
   includeEmail: boolean;
   unlockThreshold: number;
+  recentlyChangedJobs: boolean;
 };
 
 export type ParsedSpec = {
@@ -39,6 +40,7 @@ export type ParsedSpec = {
   watchPhrases: string[];
   useSampleData: boolean;
   includeIndeed?: boolean;
+  recentlyChangedJobs?: boolean;
 };
 
 export type ScoreReason = {
@@ -230,4 +232,5 @@ export type RawCandidate = {
   sourceUrl?: string | null;
   email?: string | null;
   photoUrl?: string | null;
+  detailOnRecord?: boolean;
 };

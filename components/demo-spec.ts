@@ -14,6 +14,7 @@ export const EMPTY_REQUEST: SearchRequest = {
   includeIndeed: true,
   includeEmail: false,
   unlockThreshold: 80,
+  recentlyChangedJobs: false,
 };
 
 export const CURRENCIES = ["GBP", "EUR", "USD"] as const;

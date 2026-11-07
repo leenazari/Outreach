@@ -101,6 +101,20 @@ export function SpecForm({ value, loading, onChange, onSubmit }: SpecFormProps) 
 
       <div className="flex items-start gap-3 rounded-2xl border border-border bg-[#f8f3ea] px-3 py-3">
         <Switch
+          id="recentlyChangedJobs"
+          checked={value.recentlyChangedJobs}
+          onCheckedChange={(checked) => update("recentlyChangedJobs", checked)}
+        />
+        <div className="grid gap-1">
+          <Label htmlFor="recentlyChangedJobs">Recently changed jobs</Label>
+          <p className="text-sm leading-5 text-muted-foreground">
+            Off by default, so the LinkedIn search is not limited to people who changed jobs in the last 90 days.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-start gap-3 rounded-2xl border border-border bg-[#f8f3ea] px-3 py-3">
+        <Switch
           id="includeIndeed"
           checked={value.includeIndeed}
           onCheckedChange={(checked) => update("includeIndeed", checked)}
@@ -108,8 +122,9 @@ export function SpecForm({ value, loading, onChange, onSubmit }: SpecFormProps) 
         <div className="grid gap-1">
           <Label htmlFor="includeIndeed">Include Indeed</Label>
           <p className="text-sm leading-5 text-muted-foreground">
-            On by default. Indeed is capped at three resumes and is the expensive part of a search, because of the
-            resume fee and the US residential proxy.
+            On by default, and experimental. Indeed is capped at three resumes. The actor often fails or returns
+            nothing, and a failed start is still billed. It is the expensive part of a search because of the resume
+            fee and the US residential proxy.
           </p>
         </div>
       </div>

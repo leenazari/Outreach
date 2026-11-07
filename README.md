@@ -16,7 +16,7 @@ Searches are live Apify calls only. There is no sample-data fallback. `APIFY_TOK
    - [`lexis-solutions/resume-indeed-com-scraper`](https://apify.com/lexis-solutions/resume-indeed-com-scraper) for at most three resumes. The actor requires a US residential proxy. This source is best effort.
 4. After the shortlist is ranked, up to ten people who have a LinkedIn profile URL are sent to [`harvestapi/linkedin-profile-scraper`](https://apify.com/harvestapi/linkedin-profile-scraper) in `Profile details no email ($4 per 1k)`. That call is only for work history, dates, and connection count. It does not search email.
 5. Records are normalised to one shape: name, title, location, profile URL, source, and a signal or CV snippet. Duplicates collapse by profile URL and by normalised name.
-6. Anyone missing a must-have is dropped. The match is a case-insensitive substring across title, headline, skills, summary, and snippet. The rest are scored on nice-to-haves, signals, and a profile check.
+6. Must-haves are score criteria, not a hard filter. A short profile that does not mention a requirement is scored as unknown (“not in short profile”), not zero, and stays in the match list. The only hard drop is a clear country contradiction. The rest are scored on title, skills, experience, location, seniority, recency, and the profile check.
 
 Signals, then the profile check:
 

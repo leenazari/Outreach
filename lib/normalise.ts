@@ -106,7 +106,8 @@ export function normaliseLinkedInProfile(item: unknown): RawCandidate | null {
     sources: ["linkedin-profile"],
     snippet: stripContactDetails(snippet || title),
     haystack: [name, title, location, headline, summary, skills.join("\n"), experience].join("\n"),
-    recentlyChangedJobs: months === null ? true : months <= 3,
+    recentlyChangedJobs: months !== null && months <= 3,
+    detailOnRecord: Boolean(summary || skills.length || experience),
     competitorOrComplaintPost: false,
     cvFound: false,
     matchedWatchPhrases: [],
@@ -224,6 +225,7 @@ export function normaliseIndeedResume(item: unknown): RawCandidate | null {
     cvFound: true,
     matchedWatchPhrases: [],
     sample: false,
+    detailOnRecord: Boolean(skills.length || experience.length || highlights.length),
     experience: readWorkRoles(record, "indeed-resume"),
     connections: null,
   };
