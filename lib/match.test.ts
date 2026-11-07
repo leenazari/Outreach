@@ -57,6 +57,25 @@ describe("match scoring", () => {
     assert.ok(scored.score >= 80);
   });
 
+  it("drops unassessed skills from the score instead of counting them as zero", () => {
+    const scored = scoreMatch(
+      record({
+        haystack: "Sales Executive\nLondon",
+        snippet: "Sales Executive",
+        detailOnRecord: false,
+        experience: [],
+        recentlyChangedJobs: false,
+      }),
+      spec,
+      "verified",
+      new Date("2026-11-07T00:00:00.000Z"),
+    );
+    const skills = scored.criteria.find((item) => item.key === "skills");
+    assert.equal(skills?.assessed, false);
+    assert.equal(skills?.reason, "not assessed");
+    assert.ok(scored.score > 50);
+  });
+
   it("caps a high-risk profile below the default gate", () => {
     const scored = scoreMatch(record({}), spec, "risk", new Date("2026-11-07T00:00:00.000Z"));
     assert.equal(scored.unlockBlocked, true);

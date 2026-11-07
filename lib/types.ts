@@ -138,6 +138,7 @@ export type MatchCriterion = {
   weight: number;
   score: number;
   reason: string;
+  assessed: boolean;
 };
 
 export type Candidate = {

@@ -254,7 +254,7 @@ function CandidateCard({
               <span className="text-muted-foreground"> · {item.reason}</span>
             </span>
             <span className="shrink-0 tabular-nums text-muted-foreground">
-              {item.score} · {weightedPoints(item)}/{item.weight}
+              {item.assessed ? `${item.score} · ${weightedPoints(item)}/${item.weight}` : "not assessed"}
             </span>
           </li>
         ))}

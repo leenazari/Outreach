@@ -35,7 +35,7 @@ export async function POST(request: Request) {
 
   const record = body !== null && typeof body === "object" ? (body as Record<string, unknown>) : null;
   const specText = record ? asString(record.specText) : "";
-  const includeIndeed = record ? record.includeIndeed !== false : true;
+  const includeIndeed = record ? record.includeIndeed === true : false;
   const includeEmail = record ? record.includeEmail === true : false;
   const unlockThreshold = clampThreshold(record?.unlockThreshold ?? process.env.UNLOCK_THRESHOLD, 80);
 
@@ -80,6 +80,7 @@ export async function POST(request: Request) {
       token: process.env.APIFY_TOKEN,
       unlockThreshold,
       includeEmail,
+      enrichTopN: clampThreshold(process.env.ENRICH_TOP_N, 5) === 0 ? 5 : Math.min(10, Math.max(1, Math.round(Number(process.env.ENRICH_TOP_N) || 5))),
     });
     return NextResponse.json(result);
   } catch (error) {

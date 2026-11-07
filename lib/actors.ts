@@ -65,8 +65,8 @@ export function buildActorPlans(spec: ParsedSpec): ActorPlan[] {
       actor: INDEED_ACTOR,
       purpose:
         "Experimental Indeed resume search for at most three resumes. The actor requires a US residential proxy, often returns nothing, and a failed start is still billed. Skipped when Include Indeed is off.",
-      skipped: spec.includeIndeed === false,
-      input: spec.includeIndeed === false ? null : {
+      skipped: spec.includeIndeed !== true,
+      input: spec.includeIndeed !== true ? null : {
         startUrls: [{ url: buildIndeedResumeSearchUrl(spec.jobTitle, spec.location) }],
         maxItems: INDEED_MAX_ITEMS,
         proxyConfiguration: {

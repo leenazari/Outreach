@@ -93,8 +93,8 @@ export function SpecForm({ value, loading, onChange, onSubmit }: SpecFormProps) 
         <div className="grid gap-1">
           <Label htmlFor="includeEmail">Email search on unlocked LinkedIn profiles</Label>
           <p className="text-sm leading-5 text-muted-foreground">
-            Off by default. When on, only people who clear the threshold get the $0.01 full profile with email.
-            Otherwise that second call is the $0.004 profile with no email. People under the threshold are not enriched.
+            Off by default. The top matches are re-scored from a $0.004 full profile with no email. This switch adds a
+            second $0.01 email lookup only for people who then clear the unlock threshold.
           </p>
         </div>
       </div>
@@ -122,9 +122,8 @@ export function SpecForm({ value, loading, onChange, onSubmit }: SpecFormProps) 
         <div className="grid gap-1">
           <Label htmlFor="includeIndeed">Include Indeed</Label>
           <p className="text-sm leading-5 text-muted-foreground">
-            On by default, and experimental. Indeed is capped at three resumes. The actor often fails or returns
-            nothing, and a failed start is still billed. It is the expensive part of a search because of the resume
-            fee and the US residential proxy.
+            Off by default, and experimental. Indeed often fails while the session is starting and still bills the
+            actor-start fee. When it works, it is capped at three resumes and needs a US residential proxy.
           </p>
         </div>
       </div>

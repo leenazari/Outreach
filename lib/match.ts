@@ -88,7 +88,18 @@ function datedMonths(record: RawCandidate, now: Date): number {
   return total;
 }
 
-const UNKNOWN = "not in short profile";
+const NOT_ASSESSED = "not assessed";
+
+function notAssessed(key: MatchCriterionKey): MatchCriterion {
+  return {
+    key,
+    label: CRITERION_LABEL[key],
+    weight: MATCH_WEIGHTS[key],
+    score: 0,
+    reason: NOT_ASSESSED,
+    assessed: false,
+  };
+}
 
 function titleKnown(record: RawCandidate): boolean {
   const title = record.title.trim();
@@ -96,15 +107,7 @@ function titleKnown(record: RawCandidate): boolean {
 }
 
 function titleScore(spec: ParsedSpec, record: RawCandidate): MatchCriterion {
-  if (!titleKnown(record)) {
-    return {
-      key: "title",
-      label: CRITERION_LABEL.title,
-      weight: MATCH_WEIGHTS.title,
-      score: 50,
-      reason: UNKNOWN,
-    };
-  }
+  if (!titleKnown(record)) return notAssessed("title");
   const wanted = tokens(spec.jobTitle);
   const have = normaliseForMatch(record.title);
   const score = wanted.length === 0 ? 100 : coverage(wanted, have);
@@ -113,6 +116,7 @@ function titleScore(spec: ParsedSpec, record: RawCandidate): MatchCriterion {
     label: CRITERION_LABEL.title,
     weight: MATCH_WEIGHTS.title,
     score,
+    assessed: true,
     reason:
       wanted.length === 0
         ? "The spec did not name a title."
@@ -133,47 +137,35 @@ function skillsScore(spec: ParsedSpec, record: RawCandidate): MatchCriterion {
       weight: MATCH_WEIGHTS.skills,
       score: 100,
       reason: "The spec did not name skills to check.",
+      assessed: true,
     };
   }
-  const detailed = record.detailOnRecord === true;
-  let points = 0;
-  let unknown = 0;
-  let hits = 0;
-  for (const phrase of phrases) {
-    if (haystackIncludes(record.haystack, phrase)) {
-      points += 100;
-      hits += 1;
-    } else if (!detailed) {
-      points += 50;
-      unknown += 1;
-    }
-  }
-  const score = Math.round(points / phrases.length);
+  if (record.detailOnRecord !== true) return notAssessed("skills");
+  const hits = phrases.filter((phrase) => haystackIncludes(record.haystack, phrase)).length;
+  const score = Math.round((hits / phrases.length) * 100);
   return {
     key: "skills",
     label: CRITERION_LABEL.skills,
     weight: MATCH_WEIGHTS.skills,
     score,
+    assessed: true,
     reason:
-      unknown === phrases.length
-        ? UNKNOWN
-        : hits === phrases.length
-          ? "Every named skill or requirement appears on the public record."
-          : unknown > 0
-            ? "Some requirements are not in the short profile."
-            : `${hits} of ${phrases.length} named skills or requirements appear on the public record.`,
+      hits === phrases.length
+        ? "Every named skill or requirement appears on the public record."
+        : `${hits} of ${phrases.length} named skills or requirements appear on the public record.`,
   };
 }
 
 function experienceScore(spec: ParsedSpec, record: RawCandidate, now: Date): MatchCriterion {
   const months = datedMonths(record, now);
+  if (months <= 0) return notAssessed("experience");
   const yearsNeeded = yearRequirement(spec.mustHave);
   let score = 50;
-  let reason = UNKNOWN;
+  let reason = "Dated experience is on the record.";
   if (yearsNeeded) {
     const needed = yearsNeeded * 12;
-    score = months <= 0 ? 50 : Math.min(100, Math.round((months / needed) * 100));
-    reason = months <= 0 ? UNKNOWN : `Dated experience covers ${months} months against ${yearsNeeded} years named in the spec.`;
+    score = Math.min(100, Math.round((months / needed) * 100));
+    reason = `Dated experience covers ${months} months against ${yearsNeeded} years named in the spec.`;
   } else if (months >= 24) {
     score = 100;
     reason = "Dated experience covers at least two years.";
@@ -184,7 +176,7 @@ function experienceScore(spec: ParsedSpec, record: RawCandidate, now: Date): Mat
     score = 40;
     reason = "Dated experience covers less than a year.";
   }
-  return { key: "experience", label: CRITERION_LABEL.experience, weight: MATCH_WEIGHTS.experience, score, reason };
+  return { key: "experience", label: CRITERION_LABEL.experience, weight: MATCH_WEIGHTS.experience, score, reason, assessed: true };
 }
 
 function locationScore(spec: ParsedSpec, record: RawCandidate): MatchCriterion {
@@ -195,17 +187,10 @@ function locationScore(spec: ParsedSpec, record: RawCandidate): MatchCriterion {
       weight: MATCH_WEIGHTS.location,
       score: 100,
       reason: "The spec did not name a place.",
+      assessed: true,
     };
   }
-  if (!record.location.trim()) {
-    return {
-      key: "location",
-      label: CRITERION_LABEL.location,
-      weight: MATCH_WEIGHTS.location,
-      score: 50,
-      reason: UNKNOWN,
-    };
-  }
+  if (!record.location.trim()) return notAssessed("location");
   const same =
     haystackIncludes(record.location, spec.location) || haystackIncludes(spec.location, record.location);
   const score = same ? 100 : coverage(tokens(spec.location), normaliseForMatch(record.location));
@@ -214,6 +199,7 @@ function locationScore(spec: ParsedSpec, record: RawCandidate): MatchCriterion {
     label: CRITERION_LABEL.location,
     weight: MATCH_WEIGHTS.location,
     score,
+    assessed: true,
     reason: score === 100 ? "The location lines up with the spec." : "The location does not line up with the spec.",
   };
 }
@@ -224,8 +210,9 @@ function seniorityScore(spec: ParsedSpec, record: RawCandidate): MatchCriterion 
       key: "seniority",
       label: CRITERION_LABEL.seniority,
       weight: MATCH_WEIGHTS.seniority,
-      score: 50,
-      reason: UNKNOWN,
+      score: 0,
+      reason: NOT_ASSESSED,
+      assessed: false,
     };
   }
   const gap = Math.abs(seniority(record.title) - seniority(spec.jobTitle));
@@ -235,6 +222,7 @@ function seniorityScore(spec: ParsedSpec, record: RawCandidate): MatchCriterion 
     label: CRITERION_LABEL.seniority,
     weight: MATCH_WEIGHTS.seniority,
     score,
+    assessed: true,
     reason:
       gap === 0
         ? "Seniority is in line with the title in the spec."
@@ -249,6 +237,7 @@ function recencyScore(record: RawCandidate, now: Date): MatchCriterion {
       label: CRITERION_LABEL.recency,
       weight: MATCH_WEIGHTS.recency,
       score: 100,
+      assessed: true,
       reason: "A recent job change is on the public record.",
     };
   }
@@ -258,17 +247,24 @@ function recencyScore(record: RawCandidate, now: Date): MatchCriterion {
     const start = monthIndex(role.start);
     return start !== null && current - start <= 18;
   });
+  if (!fresh && datedMonths(record, now) <= 0) return notAssessed("recency");
   return {
     key: "recency",
     label: CRITERION_LABEL.recency,
     weight: MATCH_WEIGHTS.recency,
-    score: fresh ? 80 : (record.experience?.length ?? 0) > 0 ? 45 : 50,
+    score: fresh ? 80 : 45,
+    assessed: true,
     reason: fresh
       ? "The current role started within the last 18 months."
-      : (record.experience?.length ?? 0) > 0
-        ? "No recent job change was on the public record."
-        : UNKNOWN,
+      : "No recent job change was on the public record.",
   };
+}
+
+export function unlockEligible(criteria: MatchCriterion[]): boolean {
+  const title = criteria.find((item) => item.key === "title");
+  const location = criteria.find((item) => item.key === "location");
+  const others = criteria.filter((item) => item.assessed && item.key !== "title" && item.key !== "location");
+  return Boolean(title?.assessed && location?.assessed && others.length >= 1);
 }
 
 export function scoreMatch(
@@ -276,7 +272,7 @@ export function scoreMatch(
   spec: ParsedSpec,
   validation: ValidationStatus,
   now = new Date(),
-): { score: number; criteria: MatchCriterion[]; unlockBlocked: boolean; blockedReason: string | null } {
+): { score: number; criteria: MatchCriterion[]; unlockBlocked: boolean; blockedReason: string | null; eligible: boolean } {
   const criteria = [
     titleScore(spec, record),
     skillsScore(spec, record),
@@ -285,16 +281,25 @@ export function scoreMatch(
     seniorityScore(spec, record),
     recencyScore(record, now),
   ];
-  const raw = Math.round(criteria.reduce((total, item) => total + (item.score * item.weight) / 100, 0));
+  const assessed = criteria.filter((item) => item.assessed);
+  const weightSum = assessed.reduce((total, item) => total + item.weight, 0);
+  const raw = weightSum === 0 ? 0 : Math.round(assessed.reduce((total, item) => total + item.score * item.weight, 0) / weightSum);
   if (validation === "risk") {
     return {
       score: Math.min(raw, HIGH_RISK_SCORE_CAP),
       criteria,
       unlockBlocked: true,
       blockedReason: "High risk blocks identity unlock. The match is capped below the gate.",
+      eligible: false,
     };
   }
-  return { score: Math.max(0, Math.min(100, raw)), criteria, unlockBlocked: false, blockedReason: null };
+  return {
+    score: Math.max(0, Math.min(100, raw)),
+    criteria,
+    unlockBlocked: false,
+    blockedReason: null,
+    eligible: unlockEligible(criteria),
+  };
 }
 
 export function clampThreshold(value: unknown, fallback = 80): number {

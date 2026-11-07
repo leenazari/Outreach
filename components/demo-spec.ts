@@ -11,7 +11,7 @@ export const EMPTY_REQUEST: SearchRequest = {
   niceToHave: "",
   watchPhrases: "",
   useSampleData: false,
-  includeIndeed: true,
+  includeIndeed: false,
   includeEmail: false,
   unlockThreshold: 80,
   recentlyChangedJobs: false,

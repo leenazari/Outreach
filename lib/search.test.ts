@@ -48,7 +48,7 @@ function raw(overrides: Partial<RawCandidate> & Pick<RawCandidate, "name" | "hay
 
 describe("actor inputs", () => {
   it("uses the store field names and keeps the runs small", () => {
-    const plans = buildActorPlans(spec);
+    const plans = buildActorPlans({ ...spec, includeIndeed: true });
     const profile = plans.find((plan) => plan.actor === PROFILE_ACTOR);
     const posts = plans.find((plan) => plan.actor === POST_ACTOR);
     const indeed = plans.find((plan) => plan.actor === INDEED_ACTOR);
@@ -202,10 +202,10 @@ describe("ranking", () => {
     );
     assert.equal(short.droppedForMustHave, 1);
     assert.equal(short.candidates.length, 1);
-    assert.equal(short.candidates[0]?.subscores.find((item) => item.key === "skills")?.reason, "not in short profile");
+    assert.equal(short.candidates[0]?.subscores.find((item) => item.key === "skills")?.reason, "not assessed");
 
     assert.equal(ranked.afterDedupe, 1);
-    assert.equal(ranked.candidates[0]?.score, 88);
+    assert.equal(ranked.candidates[0]?.score, 100);
     assert.equal(ranked.candidates[0]?.validation.status, "review");
     assert.deepEqual(ranked.candidates[0]?.sources, ["indeed-resume", "linkedin-profile"]);
     assert.equal(dedupeCandidates([]).length, 0);
@@ -264,14 +264,14 @@ describe("live failures", () => {
     };
 
     const result = await searchCandidates(
-      { ...spec, useSampleData: false },
+      { ...spec, useSampleData: false, includeIndeed: true },
       { token: "server-token", runActor: runner },
     );
 
     assert.equal(result.mode, "live");
-    assert.deepEqual(calls.sort(), [INDEED_ACTOR, POST_ACTOR, PROFILE_ACTOR].sort());
+    assert.deepEqual(calls.sort(), [ENRICH_ACTOR, INDEED_ACTOR, POST_ACTOR, PROFILE_ACTOR].sort());
     assert.equal(result.candidates.length > 0, true);
-    assert.equal(result.candidates.some((candidate) => candidate.name === "Avery Lang"), false);
+    assert.equal(result.candidates.some((candidate) => candidate.name === "Avery Lang"), true);
     assert.equal(result.candidates.some((candidate) => candidate.sample), false);
     assert.equal(
       result.candidates.some((candidate) => JSON.stringify(candidate).includes("avery@example.com")),
@@ -313,11 +313,11 @@ describe("live failures", () => {
       { ...spec, useSampleData: true, watchPhrases: [] },
       { token: "present", runActor: runner },
     );
-    assert.deepEqual(calls, [PROFILE_ACTOR, INDEED_ACTOR]);
+    assert.deepEqual(calls, [PROFILE_ACTOR]);
     assert.equal(live.mode, "live");
-    assert.equal(
-      live.notices.some((notice) => notice.source === "indeed-resume"),
-      true,
+    assert.match(
+      live.notices.find((notice) => notice.source === "indeed-resume")?.message ?? "",
+      /Include Indeed is off/,
     );
     assert.equal(live.candidates[0]?.name, null);
     assert.equal(live.candidates[0]?.unlocked, false);

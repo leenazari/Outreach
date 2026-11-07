@@ -200,7 +200,7 @@ function scoreOne(record: RawCandidate, spec: ParsedSpec, threshold: number): Ca
   const sources = record.sources.length > 0 ? record.sources : (["linkedin-profile"] as SourceId[]);
   const skills = [...matchedMustHaves, ...matchedNiceToHaves];
   const id = candidateKey(record);
-  const unlocked = !match.unlockBlocked && match.score >= threshold;
+  const unlocked = match.eligible && !match.unlockBlocked && match.score >= threshold;
 
   return {
     id,

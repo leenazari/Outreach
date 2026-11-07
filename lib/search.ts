@@ -171,6 +171,7 @@ function applyEnrichment(records: RawCandidate[], enriched: RawCandidate[]): voi
       return Boolean(name && recordName && name === recordName && recordName !== "name not published");
     });
     if (!target) continue;
+    target.detailOnRecord = target.detailOnRecord || extra.detailOnRecord || (extra.experience?.length ?? 0) > 0;
     if ((extra.experience?.length ?? 0) > 0) {
       target.experience = [
         ...(target.experience ?? []).filter((role) => role.source === "indeed-resume"),
@@ -185,7 +186,14 @@ function applyEnrichment(records: RawCandidate[], enriched: RawCandidate[]): voi
 
 export async function searchCandidates(
   spec: ParsedSpec,
-  options: { token: string | undefined; runActor?: ActorRunner; demo?: boolean; unlockThreshold?: number; includeEmail?: boolean },
+  options: {
+    token: string | undefined;
+    runActor?: ActorRunner;
+    demo?: boolean;
+    unlockThreshold?: number;
+    includeEmail?: boolean;
+    enrichTopN?: number;
+  },
 ): Promise<SearchResponse> {
   const token = options.token?.trim() ?? "";
   const tokenConfigured = token.length > 0;
@@ -268,25 +276,26 @@ export async function searchCandidates(
 
   await Promise.all(jobs);
 
+  const enrichLimit = Math.min(10, Math.max(1, options.enrichTopN ?? 5));
   const preview = rankCandidates(raw, spec, threshold);
-  const urls = linkedinProfileUrls(preview.candidates.filter((candidate) => candidate.unlocked));
+  const urls = linkedinProfileUrls(preview.candidates.filter((candidate) => candidate.score >= 50)).slice(0, enrichLimit);
   const remaining = SEARCH_BUDGET_MS - (Date.now() - budgetStart);
   if (urls.length === 0) {
     notices.push({
       source: "apify",
       level: "info",
-      message: "No LinkedIn profile cleared the unlock threshold, so the full-profile call was not made.",
+      message: "No LinkedIn profile scored 50 or higher, so the full-profile call was not made.",
     });
   } else if (remaining < 20_000) {
     notices.push({
       source: "apify",
       level: "info",
-      message: "The profile-detail check was skipped because the search had used its time budget. Validation uses the fields already returned.",
+      message: "The full-profile rescore was skipped because the search had used its time budget.",
     });
   } else {
     const timeoutSecs = Math.max(15, Math.min(40, Math.floor(remaining / 1000) - 12));
     try {
-      const enriched = await runActor(ENRICH_ACTOR, buildEnrichInput(urls, options.includeEmail === true), {
+      const enriched = await runActor(ENRICH_ACTOR, buildEnrichInput(urls, false), {
         timeoutSecs,
         settleWaitMs: remaining > 30_000 ? 10_000 : 0,
       });
@@ -295,7 +304,7 @@ export async function searchCandidates(
         notices.push({
           source: "apify",
           level: "warning",
-          message: `LinkedIn profile detail failed: ${enriched.run.status.toLowerCase().replaceAll("-", " ")}. Validation uses the fields already returned.`,
+          message: `LinkedIn full profile failed: ${enriched.run.status.toLowerCase().replaceAll("-", " ")}. Scores use the short profiles.`,
         });
       }
       applyEnrichment(raw, stamp("linkedin-detail", ENRICH_ACTOR, enriched.run, enriched.items, spec.watchPhrases));
@@ -305,8 +314,32 @@ export async function searchCandidates(
       notices.push({
         source: "apify",
         level: "warning",
-        message: `LinkedIn profile detail failed: ${describeActorError(error)} Validation uses the fields already returned.`,
+        message: `LinkedIn full profile failed: ${describeActorError(error)} Scores use the short profiles.`,
       });
+    }
+  }
+
+  if (options.includeEmail === true) {
+    const unlocked = rankCandidates(raw, spec, threshold);
+    const emailUrls = linkedinProfileUrls(unlocked.candidates.filter((candidate) => candidate.unlocked)).slice(0, enrichLimit);
+    const emailBudget = SEARCH_BUDGET_MS - (Date.now() - budgetStart);
+    if (emailUrls.length > 0 && emailBudget >= 20_000) {
+      try {
+        const emailed = await runActor(ENRICH_ACTOR, buildEnrichInput(emailUrls, true), {
+          timeoutSecs: Math.max(15, Math.min(40, Math.floor(emailBudget / 1000) - 12)),
+          settleWaitMs: 0,
+        });
+        runs.push({ actor: ENRICH_ACTOR, items: emailed.items, run: emailed.run });
+        applyEnrichment(raw, stamp("linkedin-detail", ENRICH_ACTOR, emailed.run, emailed.items, spec.watchPhrases));
+      } catch (error) {
+        const run = error instanceof SourceFailure ? error.run : null;
+        runs.push({ actor: ENRICH_ACTOR, items: [], run });
+        notices.push({
+          source: "apify",
+          level: "warning",
+          message: `LinkedIn email search failed: ${describeActorError(error)}`,
+        });
+      }
     }
   }
 
