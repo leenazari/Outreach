@@ -13,7 +13,6 @@ export const EMPTY_REQUEST: SearchRequest = {
   useSampleData: false,
   includeIndeed: false,
   includeEmail: false,
-  unlockThreshold: 80,
   recentlyChangedJobs: false,
 };
 

@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { presentCandidate } from "./identity";
 import { HIGH_RISK_SCORE_CAP, MATCH_WEIGHTS, scoreMatch } from "./match";
 import { buildExport } from "./interviewa";
 import type { Candidate, ParsedSpec, RawCandidate } from "./types";
@@ -83,68 +82,9 @@ describe("match scoring", () => {
   });
 });
 
-describe("identity gate", () => {
-  it("strips name and profile URL below the gate and keeps them above it", () => {
-    const base = {
-      id: "linkedin.com/in/avery",
-      title: "Sales Executive",
-      location: "London, United Kingdom",
-      locationRegion: "United Kingdom",
-      companyType: "Sales",
-      experienceSummary: "1 dated role on the public record.",
-      skills: ["B2B sales"],
-      source: "linkedin-profile" as const,
-      sources: ["linkedin-profile" as const],
-      snippet: "Avery Lang, B2B sales, avery@example.com",
-      score: 70,
-      subscores: [],
-      why: [],
-      matchedMustHaves: [],
-      matchedNiceToHaves: [],
-      matchedWatchPhrases: [],
-      recentlyChangedJobs: true,
-      competitorOrComplaintPost: false,
-      cvFound: false,
-      sample: false,
-      validation: { status: "review" as const, label: "Needs review", reasons: [{ summary: "Short tenure", evidence: "Northwind 2024" }] },
-      unlockBlocked: false,
-      blockedReason: null,
-      identityNote: null,
-      email: "avery@example.com",
-      photoUrl: "https://example.com/avery.jpg",
-      sourceUrl: null,
-    } satisfies Omit<Candidate, "name" | "profileUrl" | "unlocked">;
-
-    const locked = presentCandidate({ ...base, name: "Avery Lang", profileUrl: "https://www.linkedin.com/in/avery", unlocked: false });
-    assert.equal(locked.name, null);
-    assert.equal(locked.profileUrl, null);
-    assert.equal(locked.email, null);
-    assert.equal(locked.photoUrl, null);
-    assert.equal(JSON.stringify(locked).includes("Avery Lang"), false);
-    assert.equal(JSON.stringify(locked).includes("avery@example.com"), false);
-    assert.equal(JSON.stringify(locked).includes("Northwind"), false);
-
-    const open = presentCandidate({ ...base, name: "Avery Lang", profileUrl: "https://www.linkedin.com/in/avery", unlocked: true, score: 90 });
-    assert.equal(open.name, "Avery Lang");
-    assert.equal(open.profileUrl, "https://www.linkedin.com/in/avery");
-
-    const indeed = presentCandidate({
-      ...base,
-      name: "Riley Chen",
-      profileUrl: null,
-      sourceUrl: "https://resumes.indeed.com/resume/abc",
-      sources: ["indeed-resume"],
-      source: "indeed-resume",
-      unlocked: true,
-      score: 88,
-    });
-    assert.equal(indeed.name, null);
-    assert.equal(indeed.sourceUrl, "https://resumes.indeed.com/resume/abc");
-    assert.match(indeed.identityNote ?? "", /Indeed/);
-  });
-
-  it("exports only unlocked candidates", () => {
-    const open = presentCandidate({
+describe("Interviewa export", () => {
+  it("exports every candidate", () => {
+    const open: Candidate = {
       id: "1",
       name: "Avery Lang",
       title: "Sales Executive",
@@ -171,11 +111,7 @@ describe("identity gate", () => {
       cvFound: false,
       sample: false,
       validation: { status: "verified", label: "Verified consistent", reasons: [] },
-      unlocked: true,
-      unlockBlocked: false,
-      blockedReason: null,
-      identityNote: null,
-    });
+    };
     const payload = buildExport({
       candidates: [open],
       spend: {
@@ -192,7 +128,6 @@ describe("identity gate", () => {
       searchId: "s",
       jobTitle: "Sales Executive",
       location: "London",
-      unlockThreshold: 80,
     });
     assert.equal(payload.product, "Interviewa candidate finder");
     assert.equal(payload.candidates.length, 1);

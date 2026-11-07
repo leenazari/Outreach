@@ -131,14 +131,11 @@ describe("ranking", () => {
     const avery = result.candidates.find((candidate) => candidate.name === "Avery Lang");
     const locked = result.candidates.find((candidate) => candidate.validation.status === "risk");
     const indeed = result.candidates.find((candidate) => candidate.cvFound && candidate.sources.every((source) => source === "indeed-resume"));
-    assert.equal(avery?.unlocked, true);
     assert.ok((avery?.score ?? 0) >= 80);
     assert.equal(avery?.validation.status, "verified");
-    assert.equal(indeed?.name, null);
-    assert.match(indeed?.identityNote ?? "", /Indeed/);
-    assert.equal(locked?.unlocked, false);
+    assert.equal(indeed?.name, "Riley Chen");
+    assert.equal(locked?.name, "Morgan Adeyemi");
     assert.ok((locked?.score ?? 100) <= 49);
-    assert.equal(JSON.stringify(locked).includes("Morgan"), false);
     assert.equal(matchIsOpen(80), true);
     assert.equal(matchIsOpen(79), false);
     assert.equal(result.spend.totalUsd, 0);
@@ -319,9 +316,8 @@ describe("live failures", () => {
       live.notices.find((notice) => notice.source === "indeed-resume")?.message ?? "",
       /Include Indeed is off/,
     );
-    assert.equal(live.candidates[0]?.name, null);
-    assert.equal(live.candidates[0]?.unlocked, false);
-    assert.equal(JSON.stringify(live.candidates[0]).toLowerCase().includes("priya"), false);
+    assert.equal(live.candidates[0]?.name, "Priya Shah");
+    assert.equal(live.candidates[0]?.profileUrl, "https://www.linkedin.com/in/priya");
   });
 });
 

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { parsePhraseList, parseSearchRequest } from "@/lib/parse";
 import { interpretTranscript } from "@/lib/parse-speech";
-import { clampThreshold } from "@/lib/match";
 import { MissingApifyTokenError, searchCandidates } from "@/lib/search";
 import type { ParsedSpec } from "@/lib/types";
 import { asString } from "@/lib/text";
@@ -37,7 +36,6 @@ export async function POST(request: Request) {
   const specText = record ? asString(record.specText) : "";
   const includeIndeed = record ? record.includeIndeed === true : false;
   const includeEmail = record ? record.includeEmail === true : false;
-  const unlockThreshold = clampThreshold(record?.unlockThreshold ?? process.env.UNLOCK_THRESHOLD, 80);
 
   let spec: ParsedSpec;
   if (specText) {
@@ -78,9 +76,8 @@ export async function POST(request: Request) {
   try {
     const result = await searchCandidates(spec, {
       token: process.env.APIFY_TOKEN,
-      unlockThreshold,
       includeEmail,
-      enrichTopN: clampThreshold(process.env.ENRICH_TOP_N, 5) === 0 ? 5 : Math.min(10, Math.max(1, Math.round(Number(process.env.ENRICH_TOP_N) || 5))),
+      enrichTopN: Math.min(10, Math.max(1, Math.round(Number(process.env.ENRICH_TOP_N) || 5))),
     });
     return NextResponse.json(result);
   } catch (error) {

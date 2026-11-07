@@ -12,7 +12,7 @@ function isExport(value: unknown): value is InterviewaExport {
 export async function GET(request: Request) {
   const token = process.env.APIFY_TOKEN?.trim() ?? "";
   if (!token) {
-    return NextResponse.json({ error: "APIFY_TOKEN is not set, so there is no unlocked export to read." }, { status: 503 });
+    return NextResponse.json({ error: "APIFY_TOKEN is not set, so there is no candidate export to read." }, { status: 503 });
   }
   const stored = await getStoreRecord(token, EXPORT_RECORD_KEY);
   const payload: InterviewaExport = isExport(stored)
@@ -23,7 +23,6 @@ export async function GET(request: Request) {
         searchId: null,
         jobTitle: "",
         location: "",
-        unlockThreshold: 80,
         candidates: [],
       };
   const format = new URL(request.url).searchParams.get("format");
@@ -31,7 +30,7 @@ export async function GET(request: Request) {
     return new NextResponse(exportToCsv(payload), {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": "attachment; filename=\"interviewa-unlocked-candidates.csv\"",
+        "Content-Disposition": "attachment; filename=\"interviewa-candidates.csv\"",
       },
     });
   }

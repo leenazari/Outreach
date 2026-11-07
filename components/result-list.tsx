@@ -94,7 +94,6 @@ export function ResultList({
 }
 
 function Ready({ result }: { result: SearchResponse }) {
-  const lockedCount = result.candidates.filter((candidate) => !candidate.unlocked).length;
   return (
     <div className="grid gap-4">
       {result.mode === "sample" ? (
@@ -114,17 +113,13 @@ function Ready({ result }: { result: SearchResponse }) {
         {result.stats.droppedForMustHave} dropped for a country contradiction · {result.stats.returned} ranked
         {result.spec.salaryLabel !== "Not specified" ? ` · Salary ${result.spec.salaryLabel} not scored` : ""}
       </p>
-      <p className="text-sm leading-6 text-muted-foreground">
-        Identity is returned at {result.unlockThreshold}% or higher. {lockedCount} of these records are anonymous because
-        the server removed the name, profile link, photo, and contact details.
-      </p>
       <p className="text-sm leading-6">
         <a className="font-medium underline decoration-[#c9ddd9] underline-offset-4" href="/api/candidates/export">
           Interviewa JSON export
         </a>
         <span aria-hidden> · </span>
         <a className="font-medium underline decoration-[#c9ddd9] underline-offset-4" href="/api/candidates/export?format=csv">
-          CSV of unlocked candidates
+          CSV of all candidates
         </a>
       </p>
 
@@ -159,13 +154,7 @@ function Ready({ result }: { result: SearchResponse }) {
       ) : (
         <ol className="grid gap-3">
           {result.candidates.map((candidate, index) => (
-            <CandidateCard
-              key={candidate.id}
-              candidate={candidate}
-              index={index}
-              result={result}
-              open={candidate.unlocked}
-            />
+            <CandidateCard key={candidate.id} candidate={candidate} index={index} result={result} />
           ))}
         </ol>
       )}
@@ -206,19 +195,17 @@ function CandidateCard({
   candidate,
   index,
   result,
-  open,
 }: {
   candidate: Candidate;
   index: number;
   result: SearchResponse;
-  open: boolean;
 }) {
   return (
     <li className="rounded-2xl border border-border bg-card p-4 sm:p-5">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">{index + 1}</p>
-          {open && candidate.profileUrl && candidate.name ? (
+          {candidate.profileUrl && candidate.name ? (
             <a
               href={candidate.profileUrl}
               target="_blank"
@@ -228,19 +215,19 @@ function CandidateCard({
               {candidate.name}
             </a>
           ) : (
-            <p className="font-serif text-2xl tracking-tight">{open ? candidate.name ?? "Name not on this source" : "Locked match"}</p>
+            <p className="font-serif text-2xl tracking-tight">{candidate.name ?? "Name not published"}</p>
           )}
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
             {candidate.title}
             <span aria-hidden> · </span>
             {candidate.companyType}
             <span aria-hidden> · </span>
-            {open ? candidate.location : candidate.locationRegion}
+            {candidate.location}
           </p>
         </div>
         <p className="shrink-0 text-right">
           <span className="font-serif text-3xl tabular-nums tracking-tight">{candidate.score}%</span>
-          <span className="mt-1 block text-xs text-muted-foreground">{open ? "match, identity open" : "match, identity withheld"}</span>
+          <span className="mt-1 block text-xs text-muted-foreground">match</span>
         </p>
       </div>
       <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-secondary" aria-hidden>
@@ -271,28 +258,23 @@ function CandidateCard({
           </Badge>
         ))}
       </div>
-      {candidate.identityNote ? <p className="mt-3 text-sm leading-6 text-muted-foreground">{candidate.identityNote}</p> : null}
-      {open && candidate.sourceUrl ? (
+      {candidate.sourceUrl ? (
         <p className="mt-2 text-sm leading-6">
           <a href={candidate.sourceUrl} target="_blank" rel="noopener noreferrer" className="font-medium underline decoration-[#c9ddd9] underline-offset-4">
-            Contact via Indeed
+            Open source page
           </a>
         </p>
       ) : null}
-      {open ? (
-        <>
-          <p className="mt-3 text-sm leading-6">{candidate.snippet}</p>
-          <ul className="mt-3 grid gap-2">
-            {candidate.validation.reasons.map((reason) => (
-              <li key={reason.summary} className="text-sm leading-6">
-                <span className="font-medium">{reason.summary}</span>{" "}
-                <span className="text-muted-foreground">{reason.evidence}</span>
-              </li>
-            ))}
-          </ul>
-          <CandidateCost result={result} candidateId={candidate.id} />
-        </>
-      ) : null}
+      <p className="mt-3 text-sm leading-6">{candidate.snippet}</p>
+      <ul className="mt-3 grid gap-2">
+        {candidate.validation.reasons.map((reason) => (
+          <li key={reason.summary} className="text-sm leading-6">
+            <span className="font-medium">{reason.summary}</span>{" "}
+            <span className="text-muted-foreground">{reason.evidence}</span>
+          </li>
+        ))}
+      </ul>
+      <CandidateCost result={result} candidateId={candidate.id} />
     </li>
   );
 }

@@ -67,23 +67,6 @@ export function SpecForm({ value, loading, onChange, onSubmit }: SpecFormProps) 
         </FieldHint>
       </div>
 
-      <div className="grid gap-2">
-        <Label htmlFor="unlockThreshold">Unlock threshold</Label>
-        <input
-          id="unlockThreshold"
-          type="number"
-          min={0}
-          max={100}
-          value={value.unlockThreshold}
-          onChange={(event) => update("unlockThreshold", Number(event.target.value))}
-          className="h-11 w-28 rounded-xl border border-input bg-card px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
-        />
-        <FieldHint>
-          Default 80, or UNLOCK_THRESHOLD on the server. At or above this match, identity is returned. Below it, the
-          API omits the name, profile link, photo, and contact details.
-        </FieldHint>
-      </div>
-
       <div className="flex items-start gap-3 rounded-2xl border border-border bg-[#f8f3ea] px-3 py-3">
         <Switch
           id="includeEmail"
@@ -91,10 +74,10 @@ export function SpecForm({ value, loading, onChange, onSubmit }: SpecFormProps) 
           onCheckedChange={(checked) => update("includeEmail", checked)}
         />
         <div className="grid gap-1">
-          <Label htmlFor="includeEmail">Email search on unlocked LinkedIn profiles</Label>
+          <Label htmlFor="includeEmail">Email search on the enriched LinkedIn profiles</Label>
           <p className="text-sm leading-5 text-muted-foreground">
             Off by default. The top matches are re-scored from a $0.004 full profile with no email. This switch adds a
-            second $0.01 email lookup only for people who then clear the unlock threshold.
+            second $0.01 email lookup for those same profiles.
           </p>
         </div>
       </div>

@@ -15,7 +15,7 @@ import type { ActorRunSnapshot } from "./charge";
 import { normaliseIndeedResume, normaliseLinkedInPost, normaliseLinkedInProfile } from "./normalise";
 import { salaryLabel } from "./parse";
 import { buildExport, EXPORT_RECORD_KEY, postInterviewaWebhook } from "./interviewa";
-import { presentRanked, rankCandidates } from "./rank";
+import { rankCandidates } from "./rank";
 import { buildSampleCandidates } from "./sample";
 import { canonicalName, canonicalProfileUrl } from "./text";
 import type { ParsedSpec, RawCandidate, SearchResponse, SourceId, SourceNotice, WorkRole } from "./types";
@@ -70,10 +70,8 @@ function responseFor(
   notices: SourceNotice[],
   runs: SpendRunInput[],
   searchId: string | null,
-  threshold: number,
 ): SearchResponse {
-  const ranked = rankCandidates(raw, spec, threshold);
-  const candidates = presentRanked(ranked.candidates);
+  const ranked = rankCandidates(raw, spec);
   const spend =
     mode === "sample"
       ? sampleSpend(buildActorPlans(spec))
@@ -84,21 +82,6 @@ function responseFor(
           records: raw,
           returnedIds: new Set(ranked.candidates.map((candidate) => candidate.id)),
         });
-  const visible = new Map(candidates.map((candidate) => [candidate.id, candidate]));
-  spend.candidates = spend.candidates.map((row) => {
-    const person = visible.get(row.candidateId);
-    if (person && !person.unlocked) return { ...row, name: "Locked match" };
-    return row;
-  });
-  candidates.forEach((candidate, index) => {
-    if (candidate.unlocked) return;
-    const previous = candidate.id;
-    const next = `locked-${index + 1}`;
-    candidate.id = next;
-    for (const row of spend.candidates) {
-      if (row.candidateId === previous) row.candidateId = next;
-    }
-  });
   return {
     mode,
     tokenConfigured,
@@ -120,8 +103,7 @@ function responseFor(
       watchPhrases: spec.watchPhrases,
     },
     spend,
-    unlockThreshold: threshold,
-    candidates,
+    candidates: ranked.candidates,
   };
 }
 
@@ -190,14 +172,12 @@ export async function searchCandidates(
     token: string | undefined;
     runActor?: ActorRunner;
     demo?: boolean;
-    unlockThreshold?: number;
     includeEmail?: boolean;
     enrichTopN?: number;
   },
 ): Promise<SearchResponse> {
   const token = options.token?.trim() ?? "";
   const tokenConfigured = token.length > 0;
-  const threshold = options.unlockThreshold ?? 80;
   const notices: SourceNotice[] = [];
   const plans = buildActorPlans(spec);
 
@@ -214,7 +194,7 @@ export async function searchCandidates(
         message: "LinkedIn post search would be skipped because no competitor or complaint phrases were given.",
       });
     }
-    return responseFor(spec, "sample", tokenConfigured, buildSampleCandidates(spec), notices, [], null, threshold);
+    return responseFor(spec, "sample", tokenConfigured, buildSampleCandidates(spec), notices, [], null);
   }
 
   if (!tokenConfigured) throw new MissingApifyTokenError();
@@ -277,7 +257,7 @@ export async function searchCandidates(
   await Promise.all(jobs);
 
   const enrichLimit = Math.min(10, Math.max(1, options.enrichTopN ?? 5));
-  const preview = rankCandidates(raw, spec, threshold);
+  const preview = rankCandidates(raw, spec);
   const urls = linkedinProfileUrls(preview.candidates.filter((candidate) => candidate.score >= 50)).slice(0, enrichLimit);
   const remaining = SEARCH_BUDGET_MS - (Date.now() - budgetStart);
   if (urls.length === 0) {
@@ -320,8 +300,7 @@ export async function searchCandidates(
   }
 
   if (options.includeEmail === true) {
-    const unlocked = rankCandidates(raw, spec, threshold);
-    const emailUrls = linkedinProfileUrls(unlocked.candidates.filter((candidate) => candidate.unlocked)).slice(0, enrichLimit);
+    const emailUrls = urls;
     const emailBudget = SEARCH_BUDGET_MS - (Date.now() - budgetStart);
     if (emailUrls.length > 0 && emailBudget >= 20_000) {
       try {
@@ -362,7 +341,7 @@ export async function searchCandidates(
     }
   }
 
-  const result = responseFor(spec, "live", tokenConfigured, raw, notices, runs, searchId, threshold);
+  const result = responseFor(spec, "live", tokenConfigured, raw, notices, runs, searchId);
   if (usingLiveClient) {
     const payload = buildExport({
       candidates: result.candidates,
@@ -370,7 +349,6 @@ export async function searchCandidates(
       searchId,
       jobTitle: spec.jobTitle,
       location: spec.location,
-      unlockThreshold: threshold,
     });
     try {
       await putStoreRecord(token, EXPORT_RECORD_KEY, payload);
@@ -378,7 +356,7 @@ export async function searchCandidates(
       result.notices.push({
         source: "apify",
         level: "info",
-        message: "Unlocked candidates could not be stored for the Interviewa export. The search results are still shown.",
+        message: "Candidates could not be stored for the Interviewa export. The search results are still shown.",
       });
     }
     try {
@@ -387,7 +365,7 @@ export async function searchCandidates(
       result.notices.push({
         source: "apify",
         level: "warning",
-        message: "The Interviewa webhook did not accept the unlocked candidates.",
+        message: "The Interviewa webhook did not accept the candidates.",
       });
     }
   }

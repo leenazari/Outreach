@@ -1,8 +1,8 @@
 import { RESULT_LIMIT } from "./actors";
 import type { Candidate, ParsedSpec, RawCandidate, ScoreReason, SourceId, ValidationStatus } from "./types";
 import { canonicalName, canonicalProfileUrl, clip, haystackIncludes, uniqueStrings } from "./text";
-import { companyType, locationRegion, presentCandidate } from "./identity";
-import { clampThreshold, scoreMatch } from "./match";
+import { companyType, locationRegion } from "./identity";
+import { scoreMatch } from "./match";
 import { validateProfile } from "./validate";
 
 export const NICE_TO_HAVE_POINTS = 15;
@@ -16,9 +16,6 @@ export function matchIsOpen(score: number, threshold = MATCH_OPEN_PERCENT): bool
   return score >= threshold;
 }
 
-export function presentRanked(candidates: Candidate[]): Candidate[] {
-  return candidates.map((candidate) => presentCandidate(candidate));
-}
 export const VALIDATION_POINTS: Record<ValidationStatus, number> = {
   verified: 0,
   review: -8,
@@ -164,7 +161,7 @@ function experienceSummary(record: RawCandidate): string {
   return `${months} dated role${months === 1 ? "" : "s"} on the public record.`;
 }
 
-function scoreOne(record: RawCandidate, spec: ParsedSpec, threshold: number): Candidate | null {
+function scoreOne(record: RawCandidate, spec: ParsedSpec): Candidate | null {
   if (countryContradiction(record.location, spec.location)) return null;
 
   const matchedMustHaves = spec.mustHave.filter((phrase) => haystackIncludes(record.haystack, phrase));
@@ -200,7 +197,6 @@ function scoreOne(record: RawCandidate, spec: ParsedSpec, threshold: number): Ca
   const sources = record.sources.length > 0 ? record.sources : (["linkedin-profile"] as SourceId[]);
   const skills = [...matchedMustHaves, ...matchedNiceToHaves];
   const id = candidateKey(record);
-  const unlocked = match.eligible && !match.unlockBlocked && match.score >= threshold;
 
   return {
     id,
@@ -229,25 +225,19 @@ function scoreOne(record: RawCandidate, spec: ParsedSpec, threshold: number): Ca
     cvFound: record.cvFound,
     sample: record.sample,
     validation,
-    unlocked,
-    unlockBlocked: match.unlockBlocked,
-    blockedReason: match.blockedReason,
-    identityNote: null,
   };
 }
 
 export function rankCandidates(
   records: RawCandidate[],
   spec: ParsedSpec,
-  threshold = 80,
 ): { candidates: Candidate[]; afterDedupe: number; droppedForMustHave: number; matched: number } {
-  const gate = clampThreshold(threshold);
   const deduped = dedupeCandidates(records);
   const candidates: Candidate[] = [];
   let droppedForMustHave = 0;
 
   for (const record of deduped) {
-    const scored = scoreOne(record, spec, gate);
+    const scored = scoreOne(record, spec);
     if (!scored) {
       droppedForMustHave += 1;
       continue;

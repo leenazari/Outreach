@@ -32,7 +32,7 @@ Signals, then the profile check:
 
 Salary is kept on the spec and shown in the summary. Public profiles rarely list pay, so it is not scored. The ranked list is at most 10 people.
 
-## Match score and Interviewa unlock gate
+## Match score
 
 Every person who passes the must-have keyword gate gets a 0–100 match score from `lib/match.ts`. The weights live in `MATCH_WEIGHTS` and sum to 100. Each criterion is scored 0–100, then adds `(score / 100) × weight` points:
 
@@ -45,13 +45,11 @@ Every person who passes the must-have keyword gate gets a 0–100 match score fr
 | Seniority | 10 | How far the title's seniority sits from the spec title |
 | Recency | 10 | A recent job change, or a current role that started within 18 months |
 
-High risk caps the score at 49 and blocks unlock, so identity is not returned. Needs review does not cap the score. The threshold defaults to 80. Set `UNLOCK_THRESHOLD` on the server, or change the number on the search form for that search.
-
-Below the threshold the API returns only an anonymous summary: title, company type, experience summary, matched skills, location region, score, and sub-scores. Name, profile URL, photo, email, and full CV text are removed on the server before the JSON is sent. At or above the threshold, a LinkedIn identity is included. After the short-profile score, the top `ENRICH_TOP_N` people (default 5) who score at least 50 and have a LinkedIn URL are sent together to `harvestapi/linkedin-profile-scraper` in full-profile mode with no email, about $0.004 each. They are scored again from skills, about, and dated experience, and the 80% gate uses that second score. A criterion with no data is left out of the total and shown as “not assessed”; the remaining weights are scaled back to 100. Unlock still needs a title, a location, and at least one other assessed criterion. Email search ($0.01) runs only after that gate, and only when the email switch is on. Include Indeed is off unless the form turns it on. An unlocked Indeed-only card stays anonymous: it includes a Contact via Indeed link (`sourceUrl`) and says identity is only available inside Indeed. This app does not log into Indeed.
+High risk caps the score at 49. Needs review does not. Every candidate is shown with the name, profile URL, photo, and source URL the actor returned. After the short-profile score, the top `ENRICH_TOP_N` people (default 5) who score at least 50 and have a LinkedIn URL are sent together to `harvestapi/linkedin-profile-scraper` in full-profile mode with no email, about $0.004 each. They are scored again from skills, about, and dated experience. A criterion with no data is left out of the total and shown as “not assessed”; the remaining weights are scaled back to 100. Email search ($0.01) runs for those same profiles only when the email switch is on. Include Indeed is off unless the form turns it on. This app does not log into Indeed.
 
 ### Interviewa export
 
-`GET /api/candidates/export` returns the unlocked candidates from the latest live search as JSON. `GET /api/candidates/export?format=csv` returns the same rows as CSV. When `INTERVIEWA_WEBHOOK_URL` is set, that JSON is also POSTed after the search, with header `X-Interviewa-Webhook-Secret` set to `INTERVIEWA_WEBHOOK_SECRET`. If the URL is unset, the webhook is not called.
+`GET /api/candidates/export` returns every candidate from the latest live search as JSON. `GET /api/candidates/export?format=csv` returns the same rows as CSV. When `INTERVIEWA_WEBHOOK_URL` is set, that JSON is also POSTed after the search, with header `X-Interviewa-Webhook-Secret` set to `INTERVIEWA_WEBHOOK_SECRET`. If the URL is unset, the webhook is not called.
 
 ```json
 {
@@ -60,7 +58,6 @@ Below the threshold the API returns only an anonymous summary: title, company ty
   "searchId": "uuid",
   "jobTitle": "Sales Executive",
   "location": "London",
-  "unlockThreshold": 80,
   "candidates": [
     {
       "source": "linkedin-profile",
@@ -73,33 +70,12 @@ Below the threshold the API returns only an anonymous summary: title, company ty
       "summary": "Public snippet",
       "costAttributedUsd": 0.014,
       "sourceUrl": null,
-      "identityNote": null,
       "title": "Sales Executive",
       "locationRegion": "United Kingdom",
       "skills": ["B2B sales"],
-      "companyType": "Sales",
-      "unlocked": true
+      "companyType": "Sales"
     }
   ]
-}
-```
-
-A locked record, which is not in this export, looks like this in the search response:
-
-```json
-{
-  "name": null,
-  "profileUrl": null,
-  "email": null,
-  "photoUrl": null,
-  "sourceUrl": null,
-  "title": "Sales Executive",
-  "companyType": "Sales",
-  "locationRegion": "United Kingdom",
-  "experienceSummary": "1 dated role on the public record.",
-  "skills": ["B2B sales"],
-  "score": 74,
-  "unlocked": false
 }
 ```
 

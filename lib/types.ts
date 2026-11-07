@@ -25,7 +25,6 @@ export type SearchRequest = {
   useSampleData: boolean;
   includeIndeed: boolean;
   includeEmail: boolean;
-  unlockThreshold: number;
   recentlyChangedJobs: boolean;
 };
 
@@ -168,10 +167,6 @@ export type Candidate = {
   cvFound: boolean;
   sample: boolean;
   validation: Validation;
-  unlocked: boolean;
-  unlockBlocked: boolean;
-  blockedReason: string | null;
-  identityNote: string | null;
 };
 
 export type SourceNotice = {
@@ -211,7 +206,6 @@ export type SearchResponse = {
     watchPhrases: string[];
   };
   spend: SearchSpend;
-  unlockThreshold: number;
 };
 
 export type RawCandidate = {

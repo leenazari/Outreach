@@ -1,6 +1,6 @@
 import type { Candidate, SearchSpend } from "./types";
 
-export const EXPORT_RECORD_KEY = "latest-unlocked-export";
+export const EXPORT_RECORD_KEY = "latest-candidate-export";
 
 export type InterviewaExportCandidate = {
   source: string;
@@ -13,12 +13,10 @@ export type InterviewaExportCandidate = {
   summary: string;
   costAttributedUsd: number;
   sourceUrl: string | null;
-  identityNote: string | null;
   title: string;
   locationRegion: string;
   skills: string[];
   companyType: string;
-  unlocked: true;
 };
 
 export type InterviewaExport = {
@@ -27,7 +25,6 @@ export type InterviewaExport = {
   searchId: string | null;
   jobTitle: string;
   location: string;
-  unlockThreshold: number;
   candidates: InterviewaExportCandidate[];
 };
 
@@ -42,7 +39,6 @@ const CSV_COLUMNS = [
   "summary",
   "costAttributedUsd",
   "sourceUrl",
-  "identityNote",
   "title",
   "locationRegion",
   "skills",
@@ -50,9 +46,7 @@ const CSV_COLUMNS = [
 ] as const;
 
 export function toExportRows(candidates: Candidate[], spend: SearchSpend): InterviewaExportCandidate[] {
-  return candidates
-    .filter((candidate) => candidate.unlocked)
-    .map((candidate) => {
+  return candidates.map((candidate) => {
       const cost = spend.candidates.find((row) => row.candidateId === candidate.id);
       return {
         source: candidate.sources.join(","),
@@ -70,12 +64,10 @@ export function toExportRows(candidates: Candidate[], spend: SearchSpend): Inter
         summary: candidate.snippet,
         costAttributedUsd: cost?.totalUsd ?? 0,
         sourceUrl: candidate.sourceUrl,
-        identityNote: candidate.identityNote,
         title: candidate.title,
         locationRegion: candidate.locationRegion,
         skills: candidate.skills,
         companyType: candidate.companyType,
-        unlocked: true as const,
       };
     });
 }
@@ -86,7 +78,6 @@ export function buildExport(input: {
   searchId: string | null;
   jobTitle: string;
   location: string;
-  unlockThreshold: number;
   generatedAt?: string;
 }): InterviewaExport {
   return {
@@ -95,7 +86,6 @@ export function buildExport(input: {
     searchId: input.searchId,
     jobTitle: input.jobTitle,
     location: input.location,
-    unlockThreshold: input.unlockThreshold,
     candidates: toExportRows(input.candidates, input.spend),
   };
 }
