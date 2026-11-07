@@ -1,6 +1,8 @@
+import { MAX_ENRICH } from "./actors";
 import { isVanityLinkedInUrl, memberKeysFrom } from "./linkedin";
 import { commuteDecision } from "./location-fit";
 import { dedupeCandidates } from "./rank";
+import { titleClearlyUnrelated } from "./title-filter";
 import type { ParsedSpec, RawCandidate } from "./types";
 import { canonicalName, canonicalProfileUrl, uniqueStrings } from "./text";
 
@@ -28,6 +30,36 @@ export function enrichmentQuery(target: EnrichmentTarget): string | null {
   if (id) return `https://www.linkedin.com/in/${id}`;
   if (/linkedin\.com\//i.test(url)) return url.split(/[?#]/)[0] ?? url;
   return null;
+}
+
+export function preFilterCandidates(records: RawCandidate[], spec: ParsedSpec, limit = MAX_ENRICH): {
+  kept: RawCandidate[];
+  enrich: RawCandidate[];
+  excludedLocation: number;
+  excludedTitle: number;
+} {
+  let excludedLocation = 0;
+  let excludedTitle = 0;
+  const kept: RawCandidate[] = [];
+  for (const record of dedupeCandidates(records)) {
+    const linkedIn = record.sources.includes("linkedin-profile") || Boolean(record.profileUrl?.includes("linkedin.com/in/"));
+    if (linkedIn && commuteDecision(record.location, spec) === "excluded") {
+      excludedLocation += 1;
+      continue;
+    }
+    if (linkedIn && titleClearlyUnrelated(record.title, spec.jobTitle)) {
+      excludedTitle += 1;
+      continue;
+    }
+    kept.push(record);
+  }
+  const enrich = [...kept].sort((left, right) => {
+    const location =
+      Number(commuteDecision(left.location, spec) === "unknown") - Number(commuteDecision(right.location, spec) === "unknown");
+    if (location !== 0) return location;
+    return (right.firstPassScore ?? 0) - (left.firstPassScore ?? 0);
+  });
+  return { kept, enrich: enrich.slice(0, Math.max(0, limit)), excludedLocation, excludedTitle };
 }
 
 export function profilesToEnrich(records: RawCandidate[], spec: ParsedSpec, limit: number): string[] {

@@ -41,15 +41,15 @@ export function Finder({ tokenConfigured }: { tokenConfigured: boolean }) {
     setRevision((current) => current + 1);
   }
 
-  async function onSubmit() {
+  async function runSearch(page = 1) {
     setStatus("loading");
     setError(null);
-    setResult(null);
+    if (page === 1) setResult(null);
     try {
       const response = await fetch("/api/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, page }),
       });
       const payload: unknown = await response.json();
       if (!response.ok) {
@@ -66,7 +66,15 @@ export function Finder({ tokenConfigured }: { tokenConfigured: boolean }) {
         setError("The server returned an unexpected payload.");
         return;
       }
-      setResult(payload);
+      setResult((current) => {
+        if (page === 1 || !current) return payload;
+        const seen = new Set(current.candidates.map((candidate) => candidate.id));
+        return {
+          ...payload,
+          candidates: [...current.candidates, ...payload.candidates.filter((candidate) => !seen.has(candidate.id))],
+          page: payload.page,
+        };
+      });
       setStatus("ready");
     } catch {
       setStatus("error");
@@ -91,8 +99,8 @@ export function Finder({ tokenConfigured }: { tokenConfigured: boolean }) {
               loading={status === "loading"}
               revision={revision}
               onChange={setForm}
-              onSubmit={onSubmit}
-              onRerun={onSubmit}
+              onSubmit={() => void runSearch(1)}
+              onRerun={() => void runSearch(1)}
             />
           </div>
         </CardContent>
@@ -103,7 +111,8 @@ export function Finder({ tokenConfigured }: { tokenConfigured: boolean }) {
         result={result}
         tokenConfigured={tokenConfigured}
         canRerun={Boolean(form.specText.trim() || form.jobTitle.trim())}
-        onRerun={onSubmit}
+        onRerun={() => void runSearch(1)}
+        onLoadMore={() => void runSearch((result?.page ?? 1) + 1)}
       />
     </div>
   );

@@ -215,8 +215,8 @@ export function SpecForm({ value, loading, revision, onChange, onSubmit, onRerun
           <Label htmlFor="openToWork">Open to Work</Label>
           <p className="text-sm leading-5 text-muted-foreground">
             On by default. LinkedIn does not offer this filter outside Recruiter, so the search reads one full page of
-            25 short profiles, then a full profile for each person still in range, and also searches recent posts from
-            people who say they are looking.
+            25 short profiles. Full profiles are limited to the best 10 who are in range and whose title fits, and posts
+            are read only for the top 5. A rerun within a day reuses the cached page and profiles.
           </p>
         </div>
       </div>

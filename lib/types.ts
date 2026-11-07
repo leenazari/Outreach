@@ -232,6 +232,7 @@ export type SearchStats = {
   afterDedupe: number;
   droppedForMustHave: number;
   excludedForLocation: number;
+  excludedBeforeEnrichment: number;
   matched: number;
   returned: number;
 };
@@ -253,6 +254,8 @@ export type SearchResponse = {
     searchedFor: string;
   };
   spend: SearchSpend;
+  page: number;
+  canLoadMore: boolean;
 };
 
 export type RawCandidate = {

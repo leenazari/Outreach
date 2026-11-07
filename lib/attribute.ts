@@ -18,6 +18,7 @@ export type SpendRunInput = {
   actor: string;
   items: unknown[];
   run: ActorRunSnapshot | null;
+  cached?: boolean;
 };
 
 type FieldShare = {
@@ -128,6 +129,22 @@ export function buildSearchSpend(args: {
   const runs: RunSpend[] = [];
 
   for (const input of args.runs) {
+    if (input.cached) {
+      runs.push({
+        actor: input.actor,
+        label: `${actorLabel(input.actor)} (cached)`,
+        runId: null,
+        status: "SUCCEEDED",
+        startedAt: null,
+        settled: true,
+        totalUsd: 0,
+        lines: [{ label: "cached", usd: 0, kind: "event", allocated: false }],
+        consoleUrl: null,
+        note: "cached",
+      });
+      anyKnown = true;
+      continue;
+    }
     const charge = parseRunCharge(input.run, input.items.length);
     runs.push(
       runSpend(input, charge.microLines, charge.note, charge.settled, charge.totalUsd, input.run?.startedAt ?? null),

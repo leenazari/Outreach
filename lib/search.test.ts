@@ -235,10 +235,10 @@ describe("actor inputs", () => {
 
   it("estimates the open-to-work search under thirty cents before email", () => {
     const on = estimateSearchCost({ openToWork: true, includeIndeed: false, includeEmail: false, watchPhrases: false });
-    assert.equal(on.totalUsd, 0.25);
+    assert.equal(on.totalUsd, 0.16);
     assert.ok(on.totalUsd < 0.3);
     const off = estimateSearchCost({ openToWork: false, includeIndeed: false, includeEmail: false, watchPhrases: true });
-    assert.equal(off.totalUsd, 0.17);
+    assert.equal(off.totalUsd, 0.16);
   });
 
   it("builds the run endpoint without putting a token in the URL", () => {

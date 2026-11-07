@@ -87,6 +87,7 @@ export async function POST(request: Request) {
       includeEmail,
       aiMatch: true,
       storedRequest: readStoredRequest(body),
+      page: record && typeof record.page === "number" ? record.page : 1,
     });
     return NextResponse.json(result);
   } catch (error) {

@@ -15,6 +15,7 @@ export const POST_MAX_POSTS = 5;
 export const OPEN_TO_WORK_MAX_POSTS = 15;
 export const INDEED_MAX_ITEMS = 3;
 export const RESULT_LIMIT = 25;
+export const MAX_ENRICH = 10;
 export const ACTOR_TIMEOUT_SECS = 240;
 
 export function buildIndeedResumeSearchUrl(title: string, location: string): string {
@@ -169,7 +170,19 @@ export function actorLabel(actor: string): string {
 export function buildEnrichInput(urls: string[], includeEmail = false): Record<string, unknown> {
   return {
     profileScraperMode: includeEmail ? ENRICH_EMAIL_MODE : ENRICH_MODE,
-    queries: urls.slice(0, RESULT_LIMIT),
+    queries: urls.slice(0, MAX_ENRICH),
+  };
+}
+
+export function buildPostsForProfiles(urls: string[]): Record<string, unknown> {
+  return {
+    authorUrls: urls.slice(0, 5),
+    maxPosts: 1,
+    postedLimit: "month",
+    sortBy: "date",
+    profileScraperMode: "short",
+    scrapeReactions: false,
+    scrapeComments: false,
   };
 }
 

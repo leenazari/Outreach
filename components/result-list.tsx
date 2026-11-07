@@ -52,6 +52,7 @@ export function ResultList({
   tokenConfigured,
   canRerun,
   onRerun,
+  onLoadMore,
 }: {
   status: "idle" | "loading" | "error" | "ready";
   error: string | null;
@@ -59,6 +60,7 @@ export function ResultList({
   tokenConfigured: boolean;
   canRerun: boolean;
   onRerun: () => void;
+  onLoadMore: () => void;
 }) {
   return (
     <section className="grid gap-4" aria-busy={status === "loading"} aria-live="polite">
@@ -94,7 +96,9 @@ export function ResultList({
         </p>
       ) : null}
 
-      {status === "ready" && result ? <Ready result={result} canRerun={canRerun} onRerun={onRerun} /> : null}
+      {status === "ready" && result ? (
+        <Ready result={result} canRerun={canRerun} onRerun={onRerun} onLoadMore={onLoadMore} />
+      ) : null}
     </section>
   );
 }
@@ -103,10 +107,12 @@ function Ready({
   result,
   canRerun,
   onRerun,
+  onLoadMore,
 }: {
   result: SearchResponse;
   canRerun: boolean;
   onRerun: () => void;
+  onLoadMore?: () => void;
 }) {
   return (
     <div className="grid gap-4">
@@ -124,13 +130,19 @@ function Ready({
 
       <p className="text-sm leading-6 text-muted-foreground">
         {result.stats.collected} records collected · {result.stats.afterDedupe} after dedupe · Excluded for location{" "}
-        {result.stats.excludedForLocation} · {result.stats.returned} ranked
+        {result.stats.excludedForLocation} · Excluded before enrichment {result.stats.excludedBeforeEnrichment} ·{" "}
+        {result.stats.returned} ranked
         {result.spec.salaryLabel !== "Not specified" ? ` · Salary ${result.spec.salaryLabel} not scored` : ""}
       </p>
-      <div>
+      <div className="flex flex-wrap gap-2">
         <Button type="button" variant="outline" disabled={!canRerun} onClick={onRerun}>
           Rerun last search
         </Button>
+        {result.canLoadMore && onLoadMore ? (
+          <Button type="button" variant="outline" onClick={onLoadMore}>
+            Load more candidates
+          </Button>
+        ) : null}
       </div>
 
       <p className="text-sm leading-6">
