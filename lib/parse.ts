@@ -3,7 +3,7 @@ import { asString } from "./text";
 
 const MAX_PHRASE_LENGTH = 80;
 const MAX_PHRASES = 12;
-const MAX_WATCH_PHRASES = 5;
+const MAX_WATCH_PHRASES = 3;
 
 export function parsePhraseList(raw: string, limit = MAX_PHRASES): string[] {
   const seen = new Set<string>();

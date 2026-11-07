@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import type { SearchResponse, SourceId } from "@/lib/types";
+import { formatUsdAmount } from "@/lib/money";
+import type { SearchResponse, SourceId, ValidationStatus } from "@/lib/types";
 import { SOURCE_LABELS } from "@/lib/types";
 
 const SOURCE_ORDER: SourceId[] = ["linkedin-profile", "linkedin-post", "indeed-resume"];
@@ -32,14 +34,22 @@ function LoadingState() {
   );
 }
 
+const VALIDATION_CLASS: Record<ValidationStatus, string> = {
+  verified: "border-[#c9ddd9] bg-[#e7f3f1] text-[#0b3f3b]",
+  review: "border-[#efd3ae] bg-[#fbf3e6] text-[#7a4510]",
+  risk: "border-[#efc7c7] bg-[#fdf2f2] text-[#8c3030]",
+};
+
 export function ResultList({
   status,
   error,
   result,
+  tokenConfigured,
 }: {
   status: "idle" | "loading" | "error" | "ready";
   error: string | null;
   result: SearchResponse | null;
+  tokenConfigured: boolean;
 }) {
   return (
     <section className="grid gap-4" aria-busy={status === "loading"} aria-live="polite">
@@ -50,9 +60,8 @@ export function ResultList({
         <div className="grid gap-3 rounded-2xl border border-dashed border-border bg-card/70 p-5">
           <h2 className="font-serif text-2xl tracking-tight">A shortlist, not a campaign</h2>
           <p className="max-w-prose text-sm leading-6 text-muted-foreground">
-            The spec on the left is sent to the server. With sample data on, you get fictional people scored by the
-            same rules as a live run. With it off, the server calls three Apify actors and never shows the token to
-            this page.
+            Paste a job spec and search. The server reads it into criteria, then calls Apify. The token stays on the
+            server. A live search spends Apify credit, shown with the results.
           </p>
           <ul className="grid gap-2 text-sm leading-6">
             <li>LinkedIn profiles: title, location, and a recent job change.</li>
@@ -63,6 +72,12 @@ export function ResultList({
       ) : null}
 
       {status === "loading" ? <LoadingState /> : null}
+
+      {!tokenConfigured ? (
+        <p className="rounded-2xl border border-[#efc7c7] bg-[#fdf2f2] px-4 py-3 text-sm leading-6 text-[#8c3030]" role="alert">
+          APIFY_TOKEN is not set, so a live search cannot run. Add it on the server and reload.
+        </p>
+      ) : null}
 
       {status === "error" ? (
         <p className="rounded-2xl border border-[#efc7c7] bg-[#fdf2f2] px-4 py-3 text-sm leading-6 text-[#8c3030]" role="alert">
@@ -95,6 +110,8 @@ function Ready({ result }: { result: SearchResponse }) {
         {result.stats.droppedForMustHave} dropped for a missing must-have · {result.stats.returned} ranked
         {result.spec.salaryLabel !== "Not specified" ? ` · Salary ${result.spec.salaryLabel} not scored` : ""}
       </p>
+
+      <SearchCost result={result} />
 
       {result.notices.length > 0 ? (
         <ul className="grid gap-2">
@@ -155,6 +172,7 @@ function Ready({ result }: { result: SearchResponse }) {
               </div>
 
               <div className="mt-3 flex flex-wrap gap-2">
+                <Badge className={VALIDATION_CLASS[candidate.validation.status]}>{candidate.validation.label}</Badge>
                 {candidate.sample ? (
                   <Badge className="border-[#efd3ae] bg-[#fbf3e6] text-[#7a4510]">Sample data</Badge>
                 ) : null}
@@ -172,12 +190,32 @@ function Ready({ result }: { result: SearchResponse }) {
 
               <p className="mt-3 text-sm leading-6">{candidate.snippet}</p>
 
+              <ul className="mt-3 grid gap-2">
+                {candidate.validation.reasons.map((reason) => (
+                  <li key={reason.summary} className="text-sm leading-6">
+                    <span className="font-medium">{reason.summary}</span>{" "}
+                    <span className="text-muted-foreground">{reason.evidence}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                Public data can only raise a flag. A person makes the final call.
+              </p>
+
+              <CandidateCost result={result} candidateId={candidate.id} />
+
               <ul className="mt-3 grid gap-1">
                 {candidate.why.map((reason) => (
                   <li key={reason.label} className="flex items-baseline justify-between gap-3 text-sm leading-6">
                     <span>{reason.label}</span>
                     <span className="shrink-0 tabular-nums text-muted-foreground">
-                      {reason.points > 0 ? `+${reason.points}` : "required"}
+                      {reason.points > 0
+                        ? `+${reason.points}`
+                        : reason.points < 0
+                          ? reason.points
+                          : reason.label.startsWith("Must-have")
+                            ? "required"
+                            : "0"}
                     </span>
                   </li>
                 ))}
@@ -191,7 +229,7 @@ function Ready({ result }: { result: SearchResponse }) {
         <summary className="cursor-pointer text-sm font-medium">Actor inputs for this spec</summary>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
           {result.mode === "sample"
-            ? "Not sent. Sample data is on, or the server has no APIFY_TOKEN."
+            ? "Not sent. This response was not a live Apify search."
             : "Sent from the server to the Apify API. The token stays on the server."}
         </p>
         <div className="mt-3 grid gap-3">
@@ -212,9 +250,85 @@ function Ready({ result }: { result: SearchResponse }) {
       </details>
 
       <p className="text-xs leading-5 text-muted-foreground">
-        Signals: recent job change +15, watched-phrase post +15, resume snippet +10. Source order checked:{" "}
-        {SOURCE_ORDER.map((source) => SOURCE_LABELS[source]).join(", ")}.
+        Signals: recent job change +15, watched-phrase post +15, resume snippet +10. Validation adjusts the score
+        after that. Source order checked: {SOURCE_ORDER.map((source) => SOURCE_LABELS[source]).join(", ")}.
       </p>
     </div>
   );
 }
+
+function SearchCost({ result }: { result: SearchResponse }) {
+  const spend = result.spend;
+  return (
+    <div className="grid gap-3 rounded-2xl border border-border bg-card p-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="font-serif text-2xl tracking-tight">Apify charge</h2>
+        <p className="font-serif text-3xl tabular-nums tracking-tight">{formatUsdAmount(spend.totalUsd)}</p>
+      </div>
+      <p className="text-sm leading-6 text-muted-foreground">{spend.note}</p>
+      {spend.settlingUsd > 0 ? (
+        <p className="text-sm leading-6 text-muted-foreground">
+          Still settling, and included in the figure above: {formatUsdAmount(spend.settlingUsd)}. The spend log reads
+          those runs again.
+        </p>
+      ) : null}
+      <ul className="grid gap-3">
+        {spend.runs.map((run) => (
+          <li key={`${run.actor}-${run.runId ?? "none"}`} className="text-sm leading-6">
+            <p className="font-medium">
+              {run.label}
+              <span className="ml-2 tabular-nums text-muted-foreground">{formatUsdAmount(run.totalUsd)}</span>
+            </p>
+            {run.lines.length > 0 ? (
+              <ul className="mt-1 grid gap-1 text-muted-foreground">
+                {run.lines.map((line) => (
+                  <li key={`${line.label}-${line.usd}`}>
+                    {line.label}
+                    {line.count ? ` × ${line.count}` : ""} · {formatUsdAmount(line.usd)}
+                    {line.allocated ? " · allocated" : ""}
+                    {line.kind === "platform" ? " · platform usage" : ""}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-muted-foreground">{run.note}</p>
+            )}
+          </li>
+        ))}
+      </ul>
+      {spend.unassignedUsd > 0 ? (
+        <p className="text-sm leading-6 text-muted-foreground">
+          Not on the shortlist: {formatUsdAmount(spend.unassignedUsd)}
+          {spend.mode === "live" ? " · allocated to records that were filtered out or could not be tied to a person" : ""}
+        </p>
+      ) : null}
+      <Link href="/spend" className="text-sm font-medium underline decoration-[#c9ddd9] underline-offset-4">
+        Review every Apify charge
+      </Link>
+    </div>
+  );
+}
+
+function CandidateCost({ result, candidateId }: { result: SearchResponse; candidateId: string }) {
+  if (result.mode === "sample") {
+    return <p className="mt-3 text-sm text-muted-foreground">Apify charge for this person: $0.00. Sample data is not spend.</p>;
+  }
+  const spend = result.spend.candidates.find((candidate) => candidate.candidateId === candidateId);
+  if (!spend) {
+    return <p className="mt-3 text-sm text-muted-foreground">No settled Apify charge was tied to this person.</p>;
+  }
+  return (
+    <div className="mt-3 grid gap-1">
+      <p className="text-sm font-medium">Apify charge for this person: {formatUsdAmount(spend.totalUsd)}</p>
+      <ul className="grid gap-1">
+        {spend.lines.map((line) => (
+          <li key={`${line.actor}-${line.field}-${line.allocated}-${line.usd}`} className="text-sm leading-6 text-muted-foreground">
+            {line.field} from {line.sourceLabel}: {formatUsdAmount(line.usd)}
+            {line.allocated ? " · allocated" : " · per-event charge"}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+

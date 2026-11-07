@@ -3,16 +3,18 @@ import { describe, it } from "node:test";
 import {
   ACTOR_TIMEOUT_SECS,
   buildActorPlans,
+  buildEnrichInput,
   buildIndeedResumeSearchUrl,
+  ENRICH_ACTOR,
   INDEED_ACTOR,
   POST_ACTOR,
   PROFILE_ACTOR,
 } from "./actors";
-import { buildSyncDatasetUrl, type ActorRunner } from "./apify";
+import { buildActorRunsUrl, type ActorRunner } from "./apify";
+import { MissingApifyTokenError, searchCandidates } from "./search";
 import { normaliseIndeedResume, normaliseLinkedInProfile } from "./normalise";
 import { parsePhraseList, parseSearchRequest } from "./parse";
 import { dedupeCandidates, rankCandidates } from "./rank";
-import { searchCandidates } from "./search";
 import type { ParsedSpec, RawCandidate } from "./types";
 import { canonicalProfileUrl } from "./text";
 
@@ -65,7 +67,7 @@ describe("actor inputs", () => {
 
     assert.deepEqual(posts?.input, {
       searchQueries: ["Greenhouse", "ATS is painful", "Lever"],
-      maxPosts: 10,
+      maxPosts: 5,
       postedLimit: "month",
       sortBy: "date",
       profileScraperMode: "short",
@@ -78,7 +80,7 @@ describe("actor inputs", () => {
       maxItems: number;
       proxyConfiguration: { useApifyProxy: boolean; apifyProxyGroups: string[]; apifyProxyCountry: string };
     };
-    assert.equal(indeedInput.maxItems, 10);
+    assert.equal(indeedInput.maxItems, 3);
     assert.equal(indeedInput.proxyConfiguration.apifyProxyCountry, "US");
     assert.equal(indeedInput.proxyConfiguration.useApifyProxy, true);
     assert.deepEqual(indeedInput.proxyConfiguration.apifyProxyGroups, ["RESIDENTIAL"]);
@@ -87,18 +89,28 @@ describe("actor inputs", () => {
     assert.match(indeedInput.startUrls[0]?.url ?? "", /l=London/);
   });
 
+  it("skips Indeed when Include Indeed is off", () => {
+    const indeed = buildActorPlans({ ...spec, includeIndeed: false }).find((plan) => plan.actor === INDEED_ACTOR);
+    assert.equal(indeed?.skipped, true);
+    assert.equal(indeed?.input, null);
+  });
+
   it("skips post search when no phrases are given", () => {
     const posts = buildActorPlans({ ...spec, watchPhrases: [] }).find((plan) => plan.actor === POST_ACTOR);
     assert.equal(posts?.skipped, true);
     assert.equal(posts?.input, null);
   });
 
-  it("builds the sync dataset endpoint without putting a token in the URL", () => {
-    const url = buildSyncDatasetUrl(PROFILE_ACTOR, ACTOR_TIMEOUT_SECS);
+  it("builds the run endpoint without putting a token in the URL", () => {
+    const url = buildActorRunsUrl(PROFILE_ACTOR, ACTOR_TIMEOUT_SECS);
     assert.equal(
       url,
-      "https://api.apify.com/v2/acts/harvestapi~linkedin-profile-search/run-sync-get-dataset-items?timeout=240&format=json&clean=true&limit=100",
+      "https://api.apify.com/v2/acts/harvestapi~linkedin-profile-search/runs?timeout=240&waitForFinish=60",
     );
+    assert.deepEqual(buildEnrichInput(["https://www.linkedin.com/in/ada"]), {
+      profileScraperMode: "Profile details no email ($4 per 1k)",
+      queries: ["https://www.linkedin.com/in/ada"],
+    });
     assert.equal(url.includes("token"), false);
     assert.match(buildIndeedResumeSearchUrl("Nurse", "Manchester"), /q=Nurse/);
     assert.match(buildIndeedResumeSearchUrl("Nurse", "Manchester"), /l=Manchester/);
@@ -110,9 +122,9 @@ describe("ranking", () => {
     let calls = 0;
     const runner: ActorRunner = async () => {
       calls += 1;
-      return [];
+      return { items: [], run: null };
     };
-    const result = await searchCandidates(spec, { token: "secret", runActor: runner });
+    const result = await searchCandidates(spec, { token: "secret", runActor: runner, demo: true });
 
     assert.equal(calls, 0);
     assert.equal(result.mode, "sample");
@@ -120,12 +132,18 @@ describe("ranking", () => {
       result.candidates.map((candidate) => [candidate.name, candidate.score]),
       [
         ["Avery Lang", 60],
-        ["Riley Chen", 55],
-        ["Priya Shah", 30],
-        ["Morgan Adeyemi", 15],
+        ["Riley Chen", 47],
+        ["Priya Shah", 32],
+        ["Morgan Adeyemi", 0],
       ],
     );
-    assert.equal(result.stats.collected, 7);
+    assert.deepEqual(
+      result.candidates.map((candidate) => candidate.validation.status),
+      ["verified", "review", "review", "risk"],
+    );
+    assert.equal(result.spend.totalUsd, 0);
+    assert.equal(result.spend.settled, true);
+    assert.equal(result.stats.collected, 8);
     assert.equal(result.stats.afterDedupe, 6);
     assert.equal(result.stats.droppedForMustHave, 2);
     assert.equal(result.candidates[0]?.sources.length, 2);
@@ -163,7 +181,8 @@ describe("ranking", () => {
     );
 
     assert.equal(ranked.afterDedupe, 1);
-    assert.equal(ranked.candidates[0]?.score, 40);
+    assert.equal(ranked.candidates[0]?.score, 32);
+    assert.equal(ranked.candidates[0]?.validation.status, "review");
     assert.deepEqual(ranked.candidates[0]?.sources, ["indeed-resume", "linkedin-profile"]);
     assert.equal(dedupeCandidates([]).length, 0);
   });
@@ -184,9 +203,13 @@ describe("live failures", () => {
     const calls: string[] = [];
     const runner: ActorRunner = async (actor) => {
       calls.push(actor);
-      if (actor === INDEED_ACTOR) throw new Error("login wall");
+      if (actor === ENRICH_ACTOR || actor === INDEED_ACTOR) {
+        if (actor === INDEED_ACTOR) throw new Error("login wall");
+        return { items: [], run: null };
+      }
       if (actor === POST_ACTOR) {
-        return [
+        return {
+          items: [
           {
             type: "post",
             content: "Greenhouse has been miserable this month.",
@@ -197,18 +220,23 @@ describe("live failures", () => {
               linkedinUrl: "https://www.linkedin.com/in/sample-morgan",
             },
           },
-        ];
+        ],
+          run: null,
+        };
       }
-      return [
-        {
-          firstName: "Avery",
-          lastName: "Lang",
-          position: "Senior Product Designer. Figma, user research, design systems, accessibility",
-          linkedinUrl: "https://www.linkedin.com/in/sample-avery",
-          location: { linkedinText: "London, United Kingdom" },
-          summary: "Reach me at avery@example.com",
-        },
-      ];
+      return {
+        items: [
+          {
+            firstName: "Avery",
+            lastName: "Lang",
+            position: "Senior Product Designer. Figma, user research, design systems, accessibility",
+            linkedinUrl: "https://www.linkedin.com/in/sample-avery",
+            location: { linkedinText: "London, United Kingdom" },
+            summary: "Reach me at avery@example.com",
+          },
+        ],
+        run: null,
+      };
     };
 
     const result = await searchCandidates(
@@ -217,7 +245,7 @@ describe("live failures", () => {
     );
 
     assert.equal(result.mode, "live");
-    assert.deepEqual(calls.sort(), [INDEED_ACTOR, POST_ACTOR, PROFILE_ACTOR].sort());
+    assert.deepEqual(calls.sort(), [ENRICH_ACTOR, INDEED_ACTOR, POST_ACTOR, PROFILE_ACTOR].sort());
     assert.equal(result.candidates.some((candidate) => candidate.name === "Avery Lang"), true);
     assert.equal(result.candidates.some((candidate) => candidate.sample), false);
     assert.equal(
@@ -235,31 +263,32 @@ describe("live failures", () => {
     const calls: string[] = [];
     const runner: ActorRunner = async (actor) => {
       calls.push(actor);
-      if (actor === INDEED_ACTOR) return [];
-      return [
-        {
-          firstName: "Priya",
-          lastName: "Shah",
-          headline: "Figma, user research, design systems",
-          linkedinUrl: "https://www.linkedin.com/in/priya",
-        },
-      ];
+      if (actor === INDEED_ACTOR || actor === ENRICH_ACTOR) return { items: [], run: null };
+      return {
+        items: [
+          {
+            firstName: "Priya",
+            lastName: "Shah",
+            headline: "Figma, user research, design systems",
+            linkedinUrl: "https://www.linkedin.com/in/priya",
+          },
+        ],
+        run: null,
+      };
     };
 
-    const missingToken = await searchCandidates(
-      { ...spec, useSampleData: false },
-      { token: "  ", runActor: runner },
+    await assert.rejects(
+      () => searchCandidates({ ...spec, useSampleData: true }, { token: "  ", runActor: runner }),
+      MissingApifyTokenError,
     );
-    assert.equal(missingToken.mode, "sample");
     assert.equal(calls.length, 0);
-    assert.match(missingToken.notices[0]?.message ?? "", /APIFY_TOKEN/);
 
     calls.length = 0;
     const live = await searchCandidates(
-      { ...spec, useSampleData: false, watchPhrases: [] },
+      { ...spec, useSampleData: true, watchPhrases: [] },
       { token: "present", runActor: runner },
     );
-    assert.deepEqual(calls, [PROFILE_ACTOR, INDEED_ACTOR]);
+    assert.deepEqual(calls, [PROFILE_ACTOR, INDEED_ACTOR, ENRICH_ACTOR]);
     assert.equal(live.mode, "live");
     assert.equal(
       live.notices.some((notice) => notice.source === "indeed-resume"),

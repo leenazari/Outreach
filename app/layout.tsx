@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Fraunces, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -44,6 +45,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 Interviewa
               </p>
             </div>
+            <nav aria-label="Sections" className="flex gap-4 text-sm font-medium">
+              <Link href="/" className="underline decoration-[#c9ddd9] underline-offset-4">
+                Shortlist
+              </Link>
+              <Link href="/spend" className="underline decoration-[#c9ddd9] underline-offset-4">
+                Apify spend
+              </Link>
+            </nav>
             <div className="max-w-3xl">
               <h1 className="font-serif text-4xl tracking-tight sm:text-5xl">Candidate finder</h1>
               <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">

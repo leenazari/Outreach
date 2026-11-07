@@ -1,4 +1,4 @@
-import type { ParsedSpec, RawCandidate } from "./types";
+import type { ParsedSpec, RawCandidate, WorkRole } from "./types";
 
 function listed(phrases: string[], fallback: string): string {
   return phrases.length > 0 ? phrases.join(", ") : fallback;
@@ -6,6 +6,10 @@ function listed(phrases: string[], fallback: string): string {
 
 function withoutFirst(phrases: string[]): string {
   return phrases.length > 1 ? phrases.slice(1).join(", ") : "a neighbouring craft skill";
+}
+
+function role(input: Omit<WorkRole, "detail" | "source"> & { detail?: string; source: WorkRole["source"] }): WorkRole {
+  return { detail: "", ...input };
 }
 
 export function buildSampleCandidates(spec: ParsedSpec): RawCandidate[] {
@@ -39,6 +43,27 @@ export function buildSampleCandidates(spec: ParsedSpec): RawCandidate[] {
       cvFound: false,
       matchedWatchPhrases: [],
       sample: true,
+      connections: 480,
+      experience: [
+        role({
+          title,
+          company: "Northwind",
+          location,
+          start: "2018-01",
+          end: "2023-12",
+          detail: "B2B sales",
+          source: "linkedin-profile",
+        }),
+        role({
+          title,
+          company: "Harbor",
+          location,
+          start: "2024-01",
+          end: null,
+          detail: "B2B sales",
+          source: "linkedin-profile",
+        }),
+      ],
     },
     {
       name: "Avery Lang",
@@ -67,6 +92,32 @@ export function buildSampleCandidates(spec: ParsedSpec): RawCandidate[] {
       cvFound: true,
       matchedWatchPhrases: [],
       sample: true,
+      experience: [
+        role({
+          title: `${title}, B2B sales`,
+          company: "Lumen",
+          location,
+          start: "2024-01",
+          end: "2024-03",
+          source: "indeed-resume",
+        }),
+        role({
+          title: `${title}, B2B sales`,
+          company: "Keel",
+          location,
+          start: "2024-04",
+          end: "2024-06",
+          source: "indeed-resume",
+        }),
+        role({
+          title: `${title}, B2B sales`,
+          company: "Plover",
+          location,
+          start: "2024-07",
+          end: "2024-09",
+          source: "indeed-resume",
+        }),
+      ],
     },
     {
       name: "Priya Shah",
@@ -81,6 +132,49 @@ export function buildSampleCandidates(spec: ParsedSpec): RawCandidate[] {
       cvFound: false,
       matchedWatchPhrases: [],
       sample: true,
+      connections: 35,
+      experience: [
+        role({
+          title: "Retail assistant",
+          company: "Harbor Labs",
+          location,
+          start: "2018-01",
+          end: "2020-06",
+          source: "linkedin-profile",
+        }),
+        role({
+          title: `${title}, B2B sales`,
+          company: "Harbor Labs",
+          location,
+          start: "2026-09",
+          end: null,
+          source: "linkedin-profile",
+        }),
+      ],
+    },
+    {
+      name: "Priya Shah",
+      title,
+      location: "Manchester",
+      profileUrl: null,
+      sources: ["indeed-resume"],
+      snippet: `Resume lists ${must}. Current employer is Northwind Goods in Manchester.`,
+      haystack: `${title}\nManchester\n${must}`,
+      recentlyChangedJobs: false,
+      competitorOrComplaintPost: false,
+      cvFound: true,
+      matchedWatchPhrases: [],
+      sample: true,
+      experience: [
+        role({
+          title: `${title}, B2B sales`,
+          company: "Northwind Goods",
+          location: "Manchester",
+          start: "2024-01",
+          end: null,
+          source: "indeed-resume",
+        }),
+      ],
     },
     {
       name: "Morgan Adeyemi",
@@ -95,6 +189,33 @@ export function buildSampleCandidates(spec: ParsedSpec): RawCandidate[] {
       cvFound: false,
       matchedWatchPhrases: watched,
       sample: true,
+      connections: 8,
+      experience: [
+        role({
+          title: "VP of Sales",
+          company: "Alpha",
+          location,
+          start: "2026-06",
+          end: "2026-01",
+          source: "linkedin-post",
+        }),
+        role({
+          title: "VP of Sales",
+          company: "Alpha",
+          location,
+          start: "2026-03",
+          end: null,
+          source: "linkedin-post",
+        }),
+        role({
+          title: "VP of Sales",
+          company: "Beta",
+          location: "Manchester",
+          start: "2026-04",
+          end: null,
+          source: "linkedin-post",
+        }),
+      ],
     },
     {
       name: "Jonah Ellis",

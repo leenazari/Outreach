@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { DEMO_REQUEST } from "@/components/demo-spec";
+import { EMPTY_REQUEST } from "@/components/demo-spec";
 import { ResultList } from "@/components/result-list";
 import { SpecForm } from "@/components/spec-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +14,7 @@ function isSearchResponse(value: unknown): value is SearchResponse {
 }
 
 export function Finder({ tokenConfigured }: { tokenConfigured: boolean }) {
-  const [form, setForm] = useState<SearchRequest>(DEMO_REQUEST);
+  const [form, setForm] = useState<SearchRequest>(EMPTY_REQUEST);
   const [status, setStatus] = useState<"idle" | "loading" | "error" | "ready">("idle");
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SearchResponse | null>(null);
@@ -58,20 +58,14 @@ export function Finder({ tokenConfigured }: { tokenConfigured: boolean }) {
         <CardHeader>
           <CardTitle>Job spec</CardTitle>
           <CardDescription>
-            Title, place, pay band, and the phrases that decide who stays on the shortlist.
+            Paste a job spec. It is read into a title, place, pay band, and requirements.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <SpecForm
-            value={form}
-            loading={status === "loading"}
-            tokenConfigured={tokenConfigured}
-            onChange={setForm}
-            onSubmit={onSubmit}
-          />
+          <SpecForm value={form} loading={status === "loading"} onChange={setForm} onSubmit={onSubmit} />
         </CardContent>
       </Card>
-      <ResultList status={status} error={error} result={result} />
+      <ResultList status={status} error={error} result={result} tokenConfigured={tokenConfigured} />
     </div>
   );
 }

@@ -1,12 +1,28 @@
 import { RESULT_LIMIT } from "./actors";
-import type { Candidate, ParsedSpec, RawCandidate, ScoreReason, SourceId } from "./types";
+import type { Candidate, ParsedSpec, RawCandidate, ScoreReason, SourceId, ValidationStatus } from "./types";
 import { canonicalName, canonicalProfileUrl, clip, haystackIncludes, uniqueStrings } from "./text";
+import { validateProfile } from "./validate";
 
 export const NICE_TO_HAVE_POINTS = 15;
 export const NICE_TO_HAVE_CAP = 60;
 export const RECENT_JOB_POINTS = 15;
 export const WATCH_POST_POINTS = 15;
 export const CV_POINTS = 10;
+export const VALIDATION_POINTS: Record<ValidationStatus, number> = {
+  verified: 0,
+  review: -8,
+  risk: -20,
+};
+
+const VALIDATION_WHY: Record<ValidationStatus, string> = {
+  verified: "Validation: public work history is consistent",
+  review: "Validation: needs review",
+  risk: "Validation: high risk",
+};
+
+export function candidateKey(record: RawCandidate): string {
+  return canonicalProfileUrl(record.profileUrl) || canonicalName(record.name) || record.snippet.slice(0, 40);
+}
 
 const UNPUBLISHED_NAME = "name not published";
 
@@ -47,6 +63,14 @@ function mergeCandidate(existing: RawCandidate, incoming: RawCandidate): void {
     ...incoming.matchedWatchPhrases,
   ]);
   existing.sample = existing.sample && incoming.sample;
+  existing.experience = [...(existing.experience ?? []), ...(incoming.experience ?? [])];
+  existing.origins = [...(existing.origins ?? []), ...(incoming.origins ?? [])];
+  if (typeof incoming.connections === "number") {
+    existing.connections =
+      typeof existing.connections === "number"
+        ? Math.min(existing.connections, incoming.connections)
+        : incoming.connections;
+  }
 }
 
 export function dedupeCandidates(records: RawCandidate[]): RawCandidate[] {
@@ -65,6 +89,8 @@ export function dedupeCandidates(records: RawCandidate[]): RawCandidate[] {
         ...record,
         sources: [...record.sources],
         matchedWatchPhrases: [...record.matchedWatchPhrases],
+        experience: [...(record.experience ?? [])],
+        origins: [...(record.origins ?? [])],
       };
       order.push(copy);
       if (urlKey) byUrl.set(urlKey, copy);
@@ -135,8 +161,21 @@ function scoreOne(record: RawCandidate, spec: ParsedSpec): Candidate | null {
     });
   }
 
+  const validation = validateProfile(
+    {
+      title: record.title,
+      location: record.location,
+      experience: record.experience,
+      connections: record.connections,
+    },
+    spec,
+  );
+  const adjustment = VALIDATION_POINTS[validation.status];
+  score = Math.max(0, Math.min(100, score + adjustment));
+  why.push({ label: VALIDATION_WHY[validation.status], points: adjustment });
+
   const sources = record.sources.length > 0 ? record.sources : (["linkedin-profile"] as SourceId[]);
-  const id = canonicalProfileUrl(record.profileUrl) || canonicalName(record.name) || record.snippet.slice(0, 40);
+  const id = candidateKey(record);
 
   return {
     id,
@@ -156,6 +195,7 @@ function scoreOne(record: RawCandidate, spec: ParsedSpec): Candidate | null {
     competitorOrComplaintPost: record.competitorOrComplaintPost,
     cvFound: record.cvFound,
     sample: record.sample,
+    validation,
   };
 }
 

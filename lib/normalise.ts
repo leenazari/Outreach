@@ -1,5 +1,6 @@
 import type { RawCandidate, SourceId } from "./types";
 import { asRecord, asString, clip, haystackIncludes, stripContactDetails } from "./text";
+import { readConnections, readWorkRoles } from "./work";
 
 function collectSkills(value: unknown): string[] {
   if (typeof value === "string") {
@@ -110,6 +111,8 @@ export function normaliseLinkedInProfile(item: unknown): RawCandidate | null {
     cvFound: false,
     matchedWatchPhrases: [],
     sample: false,
+    experience: readWorkRoles(record, "linkedin-profile"),
+    connections: readConnections(record),
   };
 }
 
@@ -149,6 +152,8 @@ export function normaliseLinkedInPost(item: unknown, watchPhrases: string[]): Ra
     cvFound: false,
     matchedWatchPhrases: matched,
     sample: false,
+    experience: [],
+    connections: null,
   };
 }
 
@@ -216,6 +221,8 @@ export function normaliseIndeedResume(item: unknown): RawCandidate | null {
     cvFound: true,
     matchedWatchPhrases: [],
     sample: false,
+    experience: readWorkRoles(record, "indeed-resume"),
+    connections: null,
   };
 }
 

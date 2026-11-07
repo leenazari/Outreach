@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
-import type { SpokenSpec } from "@/lib/parse-speech";
+import { foldSpeech, type SpeechChunk } from "@/lib/speech-control";
 
 type SpeechAlternative = { transcript: string };
 type SpeechResult = { isFinal: boolean; 0: SpeechAlternative };
@@ -41,14 +41,14 @@ function speechSupportSnapshot(): "yes" | "no" {
 
 export function VoiceSpec({
   disabled,
-  onApply,
+  onUseText,
 }: {
   disabled: boolean;
-  onApply: (spec: SpokenSpec) => void;
+  onUseText: (text: string) => void;
 }) {
   const supported = useSyncExternalStore(subscribeToSpeechSupport, speechSupportSnapshot, () => "unknown");
   const [listening, setListening] = useState(false);
-  const [parsing, setParsing] = useState(false);
+  const [paused, setPaused] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
@@ -64,39 +64,6 @@ export function VoiceSpec({
     };
   }, []);
 
-  async function fillFromTranscript(spoken: string) {
-    const text = spoken.trim();
-    if (!text || unmountedRef.current) return;
-    setParsing(true);
-    setMessage(null);
-    try {
-      const response = await fetch("/api/parse-spec", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transcript: text }),
-      });
-      const payload: unknown = await response.json();
-      if (!response.ok) {
-        const error =
-          payload && typeof payload === "object" && "error" in payload && typeof payload.error === "string"
-            ? payload.error
-            : "The recording could not be read into the form.";
-        setMessage(error);
-        return;
-      }
-      if (!payload || typeof payload !== "object" || !("parser" in payload)) {
-        setMessage("The recording could not be read into the form.");
-        return;
-      }
-      onApply(payload as SpokenSpec);
-      setMessage("Filled from what you said. Review the fields, then search when they look right.");
-    } catch {
-      setMessage("The browser could not reach the parser.");
-    } finally {
-      if (!unmountedRef.current) setParsing(false);
-    }
-  }
-
   function stopListening() {
     shouldParseRef.current = true;
     recognitionRef.current?.stop();
@@ -110,13 +77,17 @@ export function VoiceSpec({
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.onresult = (event) => {
-      let spoken = "";
+      const chunks: SpeechChunk[] = [];
       for (let index = 0; index < event.results.length; index += 1) {
-        spoken += event.results[index]?.[0]?.transcript ?? "";
+        chunks.push({
+          text: event.results[index]?.[0]?.transcript ?? "",
+          isFinal: Boolean(event.results[index]?.isFinal),
+        });
       }
-      const next = spoken.replace(/\s+/g, " ").trim();
-      transcriptRef.current = next;
-      setTranscript(next);
+      const folded = foldSpeech(chunks);
+      transcriptRef.current = folded.text;
+      setTranscript(folded.text);
+      setPaused(folded.paused);
     };
     recognition.onerror = (event) => {
       if (event.error === "aborted") return;
@@ -132,13 +103,17 @@ export function VoiceSpec({
     recognition.onend = () => {
       setListening(false);
       const spoken = transcriptRef.current;
-      const shouldParse = shouldParseRef.current;
+      const shouldUse = shouldParseRef.current;
       shouldParseRef.current = false;
-      if (shouldParse) void fillFromTranscript(spoken);
+      if (shouldUse && spoken.trim()) {
+        onUseText(spoken.trim());
+        setMessage("Added to the spec. Review it, then search when it looks right.");
+      }
     };
     recognitionRef.current = recognition;
     transcriptRef.current = "";
     setTranscript("");
+    setPaused(false);
     setMessage(null);
     shouldParseRef.current = false;
     try {
@@ -163,16 +138,25 @@ export function VoiceSpec({
         <Button
           type="button"
           variant="outline"
-          disabled={disabled || parsing || supported !== "yes"}
+          disabled={disabled || supported !== "yes"}
           onClick={listening ? stopListening : startListening}
           aria-pressed={listening}
         >
-          {listening ? "Stop and fill the form" : parsing ? "Reading the recording…" : "Speak the spec"}
+          {listening ? "Stop and use this text" : "Speak the spec"}
         </Button>
         {supported === "unknown" ? (
           <span className="text-sm text-muted-foreground">Checking the microphone…</span>
         ) : null}
       </div>
+      <p className="text-sm leading-5 text-muted-foreground">
+        Say “pause” or “pause bot” to stop adding words. Say “continue”, “unpause”, or “unpause bot” to resume. Those
+        words are left out of the spec.
+      </p>
+      {paused && listening ? (
+        <p className="rounded-xl border border-[#efd3ae] bg-[#fbf3e6] px-3 py-2 text-sm font-medium text-[#7a4510]" role="status">
+          Paused. Nothing you say is added until you say continue, unpause, or unpause bot.
+        </p>
+      ) : null}
       {transcript ? (
         <p className="text-sm leading-6" aria-live="polite">
           <span className="font-medium">Heard: </span>
