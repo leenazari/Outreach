@@ -74,6 +74,8 @@ export function applyEnrichment(records: RawCandidate[], enriched: RawCandidate[
     if (typeof extra.connections === "number") target.connections = extra.connections;
     if (extra.company) target.company = extra.company;
     if (extra.industry) target.industry = extra.industry;
+    target.openToWork = target.openToWork || extra.openToWork;
+    if (!target.openToWorkPostUrl && extra.openToWorkPostUrl) target.openToWorkPostUrl = extra.openToWorkPostUrl;
     if (extra.title && extra.title !== "Title not listed") target.title = extra.title;
     target.profileUrl = preferUrl(target.profileUrl, extra.profileUrl);
     target.linkedinIds = uniqueStrings([...(target.linkedinIds ?? []), ...(extra.linkedinIds ?? [])]);

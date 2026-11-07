@@ -111,6 +111,8 @@ describe("Interviewa export", () => {
       cvFound: false,
       sample: false,
       validation: { status: "verified", label: "Verified consistent", reasons: [] },
+      openToWork: false,
+      openToWorkPostUrl: null,
     };
     const payload = buildExport({
       candidates: [open],

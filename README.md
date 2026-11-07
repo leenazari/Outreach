@@ -8,13 +8,13 @@ Searches are live Apify calls only. There is no sample-data fallback. `APIFY_TOK
 
 ## What it does
 
-1. The recruiter pastes or types a job spec into an empty box, or dictates it. The server reads that text into a title, location, pay band, must-haves, and nice-to-haves. An optional phrase list still drives post search. **Include Indeed** is on unless they turn it off.
+1. The recruiter pastes or types a job spec into an empty box, or dictates it. The server reads that text into a title, location, pay band, must-haves, and nice-to-haves. **Open to Work** is on unless they turn it off. **Include Indeed** stays off unless they turn it on. The button shows an estimated Apify cost for the toggles that are on.
 2. A server route calls the [Apify API](https://api.apify.com/v2) with `APIFY_TOKEN`. The token never reaches the browser.
-3. Three actors run in parallel via `Promise.all`. One failure does not drop the others. Limits are set for a shortlist of 10, not a wide scrape.
-   - [`harvestapi/linkedin-profile-search`](https://apify.com/harvestapi/linkedin-profile-search) in `Short` mode (not Full, and never Full + email) with one search page and `maxItems: 10`.
-   - [`harvestapi/linkedin-post-search`](https://apify.com/harvestapi/linkedin-post-search) with at most three watch phrases, `maxPosts: 5`, `postedLimit: "month"`, short profiles, and reactions and comments off. Skipped when no phrases are given.
-   - [`lexis-solutions/resume-indeed-com-scraper`](https://apify.com/lexis-solutions/resume-indeed-com-scraper) for at most three resumes. The actor requires a US residential proxy. This source is best effort.
-4. After the shortlist is ranked, up to ten people who have a LinkedIn profile URL are sent to [`harvestapi/linkedin-profile-scraper`](https://apify.com/harvestapi/linkedin-profile-scraper) in `Profile details no email ($4 per 1k)`. That call is only for work history, dates, and connection count. It does not search email.
+3. The actors run in parallel via `Promise.all`. One failure does not drop the others. The shortlist shown is still 10.
+   - [`harvestapi/linkedin-profile-search`](https://apify.com/harvestapi/linkedin-profile-search) in `Short` mode, one page. Open to Work uses `maxItems: 25` (a full page, same $0.10). Otherwise `maxItems: 10`. LinkedIn does not offer an Open to Work filter outside Recruiter seats. Short profiles only carry `openProfile`, which is not that flag.
+   - [`harvestapi/linkedin-post-search`](https://apify.com/harvestapi/linkedin-post-search). With Open to Work on, the queries are `"open to work" <title> <location>` and `"looking for my next role" <title>`, `maxPosts: 15`, `postedLimit: "month"`, about $0.002 a post. Watch phrases are added to that run when they are filled in. With the toggle off, posts run only for watch phrases and stop at five.
+   - [`lexis-solutions/resume-indeed-com-scraper`](https://apify.com/lexis-solutions/resume-indeed-com-scraper) for at most three resumes when Include Indeed is on. The actor requires a US residential proxy. This source is best effort.
+4. After the first score, the top `ENRICH_TOP_N` profiles at 50 or above (default 10) go to [`harvestapi/linkedin-profile-scraper`](https://apify.com/harvestapi/linkedin-profile-scraper) in `Profile details no email ($4 per 1k)`, about $0.004 each. The full profile's `openToWork` boolean adds an Open to Work badge and 10 points, capped at 100. With the toggle on, those people and anyone who announced it in a post are sorted first. A post author is deduped against the profile results by member id or profile URL, and the post link is kept as evidence.
 5. Records are normalised to one shape: name, title, location, profile URL, source, and a signal or CV snippet. Duplicates collapse by profile URL and by normalised name.
 6. Must-haves are score criteria, not a hard filter. A short profile that does not mention a requirement is scored as unknown (“not in short profile”), not zero, and stays in the match list. The only hard drop is a clear country contradiction. The rest are scored on title, skills, experience, location, seniority, recency, and the profile check.
 
@@ -47,7 +47,7 @@ Every person who passes the must-have keyword gate gets a 0–100 match score fr
 
 High risk caps the score at 49. Needs review does not. Every candidate is shown with the name, profile URL, photo, and source URL the actor returned. The card shows the current company from the full profile, or from the short profile’s current position, rather than a sector guessed from the title. The profile link is `linkedin.com/in/<publicIdentifier>` when the source has one, and the ACwAA link otherwise.
 
-After the short-profile score, the people are sorted by score and the top `ENRICH_TOP_N` (default 5) at 50 or above are sent together to `harvestapi/linkedin-profile-scraper` in full-profile mode with no email, about $0.004 each. A profile that only has an ACwAA id is still included. The full profile is merged back by that id or by `objectUrn` / `entityUrn`, then scored again from skills, about, experience, and current company. A stated industry that clearly conflicts with the spec (for example commercial aviation or luxury jewellery retail against B2B SaaS) scores skills at 0 and caps the overall match at 40 once the full profile is in. A short profile with only the current role is Needs review when the dates are too thin to support a stronger finding. A criterion with no data is left out of the total and shown as “not assessed”; the remaining weights are scaled back to 100. Email search ($0.01) runs for those same profiles only when the email switch is on. Include Indeed is off unless the form turns it on. This app does not log into Indeed.
+After the short-profile score, the people are sorted by score and the top `ENRICH_TOP_N` (default 10) at 50 or above are sent together to `harvestapi/linkedin-profile-scraper` in full-profile mode with no email, about $0.004 each. A profile that only has an ACwAA id is still included. The full profile is merged back by that id or by `objectUrn` / `entityUrn`, then scored again from skills, about, experience, and current company. A stated industry that clearly conflicts with the spec (for example commercial aviation or luxury jewellery retail against B2B SaaS) scores skills at 0 and caps the overall match at 40 once the full profile is in. A short profile with only the current role is Needs review when the dates are too thin to support a stronger finding. A criterion with no data is left out of the total and shown as “not assessed”; the remaining weights are scaled back to 100. Email search ($0.01) runs for those same profiles only when the email switch is on. Include Indeed is off unless the form turns it on. This app does not log into Indeed.
 
 ### Interviewa export
 
@@ -127,12 +127,12 @@ Published free-plan event prices as of this writing. The page shows the run’s 
 
 | Actor | What this app requests | Published free-plan events | Expected |
 | --- | --- | --- | --- |
-| LinkedIn profile search | Short mode, 1 page, at most 10 profiles. Not Full, never email. | 1 × search page at $0.10 | **$0.10** |
-| LinkedIn post search | At most 3 phrases, 5 posts, no reactions, comments, or full profiles. Skipped with no phrases. | 5 × post at $0.002, actor start about $0.00005, plus $0.001 for an empty query | **about $0.01 to $0.02**, or $0 if skipped |
-| Indeed resumes | At most 3 resumes. US residential proxy is required by the actor. | Actor start $0.01 + 3 × resume at $0.049 | **about $0.16** in events, plus residential proxy traffic if Apify bills it on the run |
-| LinkedIn profile detail | Only the final shortlist, and only profiles with a LinkedIn URL, at most 10. No email search. | $0.004 × N profiles | **$0.04** at 10, less when fewer URLs survive |
+| LinkedIn profile search | Short mode, 1 page. Open to Work asks for 25 profiles; otherwise 10. Still one search page. Not Full, never email on this actor. | 1 × search page at $0.10 | **$0.10** |
+| LinkedIn post search | Open to Work adds two queries and up to 15 posts. Watch phrases alone stay at 5 posts. No reactions or comments. | 15 × post at $0.002, or 5 × $0.002 | **$0.03** with Open to Work, **about $0.01** for watch phrases only, or $0 if both are off |
+| Indeed resumes | At most 3 resumes, and only when Include Indeed is on. US residential proxy is required by the actor. | Actor start $0.01 + 3 × resume at $0.049 | **about $0.16** in events, plus residential proxy traffic if Apify bills it on the run |
+| LinkedIn profile detail | Top `ENRICH_TOP_N` at 50 or above, default 10, no email unless that switch is on. | $0.004 × N profiles | **$0.04** at 10, less when fewer URLs clear 50 |
 
-A search with posts, three resumes, and ten profile-detail calls is about **$0.32 in published events before residential proxy**. Indeed’s proxy transfer is the part that can still jump. With no watch phrases the post actor is not called. With no LinkedIn URLs the detail actor is not called.
+With Open to Work on, Indeed off, and email off, the estimate next to the button is **$0.17**: the $0.10 page, $0.04 for ten full profiles, and $0.03 for fifteen posts. The spend log still records each actor run’s `usageTotalUsd`. A search that also includes Indeed is about **$0.33** in published events before residential proxy.
 
 ### Ways to cut it further
 
@@ -141,7 +141,8 @@ A search with posts, three resumes, and ten profile-detail calls is about **$0.3
 - Leave the watch-phrase box empty when you do not need posts.
 - Skip the profile-detail call. Validation then uses only the short profile, the post, and the resume, and more people will land on Needs review because dates are missing.
 - Move the Apify account up a tier. Indeed resumes drop to $0.039 / $0.029 / $0.019 on Bronze / Silver / Gold. The LinkedIn search page drops below $0.10 on higher tiers. Post events drop as well.
-- Do not raise `takePages`, `maxItems`, or turn on full-profile or email modes. Do not enable post reactions, comments, or full-profile enrichment. Do not enable LinkedIn auto query segmentation: each extra search page is another $0.10.
+- Turn Open to Work off when a page of 10 is enough. That drops the post search and keeps `maxItems` at 10. The profile page price stays $0.10 either way.
+- Do not raise `takePages` past 1, and do not turn on full-profile or email modes on the search actor. Do not enable post reactions, comments, or LinkedIn auto query segmentation: each extra search page is another $0.10.
 
 Grouping uses one key-value write per search in the store you already have. That is a fraction of a cent of platform usage and is not a new service or a new environment variable. It is not part of an actor run’s `usageTotalUsd`.
 

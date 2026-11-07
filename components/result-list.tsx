@@ -256,12 +256,21 @@ function CandidateCard({
       ) : null}
       <div className="mt-3 flex flex-wrap gap-2">
         <Badge className={VALIDATION_CLASS[candidate.validation.status]}>{candidate.validation.label}</Badge>
+        {candidate.openToWork ? <Badge variant="outline">Open to Work</Badge> : null}
+        {candidate.openToWorkPostUrl ? <Badge variant="outline">Announced open to work (post)</Badge> : null}
         {candidate.sources.map((source) => (
           <Badge key={source} variant="outline">
             {SOURCE_LABELS[source]}
           </Badge>
         ))}
       </div>
+      {candidate.openToWorkPostUrl ? (
+        <p className="mt-2 text-sm leading-6">
+          <a href={candidate.openToWorkPostUrl} target="_blank" rel="noopener noreferrer" className="font-medium underline decoration-[#c9ddd9] underline-offset-4">
+            Announced open to work (post)
+          </a>
+        </p>
+      ) : null}
       {candidate.sourceUrl ? (
         <p className="mt-2 text-sm leading-6">
           <a href={candidate.sourceUrl} target="_blank" rel="noopener noreferrer" className="font-medium underline decoration-[#c9ddd9] underline-offset-4">

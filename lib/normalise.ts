@@ -137,6 +137,7 @@ export function normaliseLinkedInProfile(item: unknown): RawCandidate | null {
     connections: readConnections(record),
     email: asString(record.email) || asString(record.emailAddress) || null,
     photoUrl: asString(record.photo) || asString(record.profilePicture) || asString(record.pictureUrl) || null,
+    openToWork: record.openToWork === true,
   };
 }
 
@@ -162,22 +163,29 @@ export function normaliseLinkedInPost(item: unknown, watchPhrases: string[]): Ra
   const title = (author ? asString(author.info) : "") || "LinkedIn member";
   const matched = watchPhrases.filter((phrase) => haystackIncludes(`${content}\n${title}`, phrase));
   const snippet = clip(content, 420);
+  const postUrl =
+    [asString(record.postUrl), asString(record.url), asString(record.shareUrl)].find((value) => value && value !== profileUrl) ||
+    null;
+  const announced = /open to work|looking for my next role/i.test(`${content}\n${asString(record.query)}`);
+  const authorIds = author ? collectLinkedInIds(author) : [];
 
   return {
     name,
     title: stripContactDetails(title),
     location: author ? locationText(author.location) : "",
     profileUrl: profileUrl || null,
+    linkedinIds: authorIds,
     sources: ["linkedin-post"],
     snippet: stripContactDetails(snippet || "Post matched a watched phrase."),
     haystack: [name, title, content].join("\n"),
     recentlyChangedJobs: false,
-    competitorOrComplaintPost: true,
+    competitorOrComplaintPost: matched.length > 0 || !announced,
     cvFound: false,
     matchedWatchPhrases: matched,
     sample: false,
     experience: [],
     connections: null,
+    openToWorkPostUrl: announced ? postUrl : null,
   };
 }
 

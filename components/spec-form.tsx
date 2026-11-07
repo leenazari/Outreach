@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { estimateSearchCost, formatEstimate } from "@/lib/estimate";
 import type { SearchRequest } from "@/lib/types";
 
 type SpecFormProps = {
@@ -13,6 +14,22 @@ type SpecFormProps = {
   onChange: (value: SearchRequest) => void;
   onSubmit: () => void;
 };
+
+function SearchEstimate({ value }: { value: SearchRequest }) {
+  const estimate = estimateSearchCost({
+    openToWork: value.openToWork,
+    includeIndeed: value.includeIndeed,
+    includeEmail: value.includeEmail,
+    watchPhrases: value.watchPhrases.trim().length > 0,
+  });
+  const breakdown = estimate.lines.map((line) => `${line.label} ${formatEstimate(line.usd)}`).join(", ");
+  return (
+    <p className="text-sm leading-5 text-muted-foreground">
+      Estimated cost <span className="font-medium text-foreground">{formatEstimate(estimate.totalUsd)}</span>
+      <span className="mt-1 block">{breakdown}. The spend log records what Apify actually charges.</span>
+    </p>
+  );
+}
 
 function FieldHint({ children }: { children: string }) {
   return <p className="text-sm leading-5 text-muted-foreground">{children}</p>;
@@ -69,6 +86,22 @@ export function SpecForm({ value, loading, onChange, onSubmit }: SpecFormProps) 
 
       <div className="flex items-start gap-3 rounded-2xl border border-border bg-[#f8f3ea] px-3 py-3">
         <Switch
+          id="openToWork"
+          checked={value.openToWork}
+          onCheckedChange={(checked) => update("openToWork", checked)}
+        />
+        <div className="grid gap-1">
+          <Label htmlFor="openToWork">Open to Work</Label>
+          <p className="text-sm leading-5 text-muted-foreground">
+            On by default. LinkedIn does not offer this filter outside Recruiter, so the search reads one full page of
+            25 short profiles, checks Open to Work on the top 10 full profiles, and also searches recent posts from
+            people who say they are looking.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-start gap-3 rounded-2xl border border-border bg-[#f8f3ea] px-3 py-3">
+        <Switch
           id="includeEmail"
           checked={value.includeEmail}
           onCheckedChange={(checked) => update("includeEmail", checked)}
@@ -111,13 +144,12 @@ export function SpecForm({ value, loading, onChange, onSubmit }: SpecFormProps) 
         </div>
       </div>
 
-      <p className="text-sm leading-5 text-muted-foreground">
-        A live search calls Apify. The charge is shown with the results and on the spend log.
-      </p>
-
-      <Button type="submit" disabled={loading}>
-        {loading ? "Searching public sources…" : "Rank public profiles"}
-      </Button>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <SearchEstimate value={value} />
+        <Button type="submit" disabled={loading}>
+          {loading ? "Searching public sources…" : "Rank public profiles"}
+        </Button>
+      </div>
     </form>
   );
 }

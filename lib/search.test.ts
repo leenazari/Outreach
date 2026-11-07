@@ -12,8 +12,9 @@ import {
 } from "./actors";
 import { buildActorRunsUrl, type ActorRunner } from "./apify";
 import { MissingApifyTokenError, searchCandidates } from "./search";
-import { normaliseIndeedResume, normaliseLinkedInProfile } from "./normalise";
+import { normaliseIndeedResume, normaliseLinkedInPost, normaliseLinkedInProfile } from "./normalise";
 import { parsePhraseList, parseSearchRequest } from "./parse";
+import { estimateSearchCost } from "./estimate";
 import { dedupeCandidates, matchIsOpen, rankCandidates } from "./rank";
 import type { ParsedSpec, RawCandidate } from "./types";
 import { canonicalProfileUrl } from "./text";
@@ -95,10 +96,103 @@ describe("actor inputs", () => {
     assert.equal(indeed?.input, null);
   });
 
+  it("uses a full profile page and open-to-work post queries when that toggle is on", () => {
+    const plans = buildActorPlans({ ...spec, openToWork: true, watchPhrases: ["Greenhouse"], includeIndeed: false });
+    const profile = plans.find((plan) => plan.actor === PROFILE_ACTOR);
+    const posts = plans.find((plan) => plan.actor === POST_ACTOR);
+    assert.equal((profile?.input as { maxItems?: number } | null)?.maxItems, 25);
+    assert.deepEqual(posts?.input, {
+      searchQueries: [
+        '"open to work" Senior Product Designer London',
+        '"looking for my next role" Senior Product Designer',
+        "Greenhouse",
+      ],
+      maxPosts: 15,
+      postedLimit: "month",
+      sortBy: "date",
+      profileScraperMode: "short",
+      scrapeReactions: false,
+      scrapeComments: false,
+    });
+  });
+
   it("skips post search when no phrases are given", () => {
     const posts = buildActorPlans({ ...spec, watchPhrases: [] }).find((plan) => plan.actor === POST_ACTOR);
     assert.equal(posts?.skipped, true);
     assert.equal(posts?.input, null);
+  });
+
+  it("boosts an Open to Work profile, caps the boost at 100, and sorts it first", () => {
+    const open = raw({
+      name: "Ada Lovelace",
+      haystack: "Senior Product Designer\nLondon",
+      title: "Senior Product Designer",
+      location: "London",
+      profileUrl: "https://www.linkedin.com/in/ada",
+      openToWork: true,
+    });
+    const closed = raw({
+      name: "Grace Hopper",
+      haystack: "Senior Product Designer\nLondon",
+      title: "Senior Product Designer",
+      location: "London",
+      profileUrl: "https://www.linkedin.com/in/grace",
+    });
+    const ranked = rankCandidates([closed, open], {
+      ...spec,
+      openToWork: true,
+      mustHave: [],
+      niceToHave: [],
+      watchPhrases: [],
+    });
+    assert.equal(ranked.candidates[0]?.name, "Ada Lovelace");
+    assert.equal(ranked.candidates[0]?.openToWork, true);
+    assert.equal(ranked.candidates[0]?.score, Math.min(100, (ranked.candidates[1]?.score ?? 0) + 10));
+    assert.ok((ranked.candidates[0]?.score ?? 0) <= 100);
+  });
+
+  it("dedupes an open-to-work post against the same member id", () => {
+    const profile = normaliseLinkedInProfile({
+      id: "ACwAAA6jhKMBtoRab0o7Q-Q764P2E1KICZTGdIc",
+      firstName: "Arjun",
+      lastName: "Ahluwalia",
+      headline: "Sales Executive",
+      linkedinUrl: "https://www.linkedin.com/in/ACwAAA6jhKMBtoRab0o7Q-Q764P2E1KICZTGdIc",
+      location: { linkedinText: "London, United Kingdom" },
+    });
+    const post = normaliseLinkedInPost(
+      {
+        type: "post",
+        content: "I am open to work and looking for my next role.",
+        url: "https://www.linkedin.com/posts/arjun-activity-1",
+        author: {
+          type: "profile",
+          name: "Arjun Ahluwalia",
+          linkedinUrl: "https://www.linkedin.com/in/arjun-ahluwalia-acsi",
+          id: "ACoAAA6jhKMBNsJqONrctbyAQapp9wAf3Fkw0fY",
+        },
+      },
+      [],
+    );
+    assert.ok(profile && post);
+    const ranked = rankCandidates([profile, post], {
+      ...spec,
+      jobTitle: "Sales Executive",
+      openToWork: true,
+      mustHave: [],
+      niceToHave: [],
+      watchPhrases: [],
+    });
+    assert.equal(ranked.candidates.length, 1);
+    assert.equal(ranked.candidates[0]?.openToWorkPostUrl, "https://www.linkedin.com/posts/arjun-activity-1");
+    assert.equal(ranked.candidates[0]?.profileUrl, "https://www.linkedin.com/in/arjun-ahluwalia-acsi");
+  });
+
+  it("estimates the open-to-work search at the page price plus ten profiles and fifteen posts", () => {
+    const on = estimateSearchCost({ openToWork: true, includeIndeed: false, includeEmail: false, watchPhrases: false });
+    assert.equal(on.totalUsd, 0.17);
+    const off = estimateSearchCost({ openToWork: false, includeIndeed: false, includeEmail: false, watchPhrases: true });
+    assert.equal(off.totalUsd, 0.15);
   });
 
   it("builds the run endpoint without putting a token in the URL", () => {

@@ -2,7 +2,7 @@ import { RESULT_LIMIT } from "./actors";
 import type { Candidate, ParsedSpec, RawCandidate, ScoreReason, SourceId, ValidationStatus } from "./types";
 import { canonicalName, canonicalProfileUrl, clip, haystackIncludes, uniqueStrings } from "./text";
 import { locationRegion } from "./identity";
-import { isVanityLinkedInUrl } from "./linkedin";
+import { isVanityLinkedInUrl, memberKeysFrom } from "./linkedin";
 import { scoreMatch } from "./match";
 import { validateProfile } from "./validate";
 
@@ -70,6 +70,8 @@ function mergeCandidate(existing: RawCandidate, incoming: RawCandidate): void {
   existing.recentlyChangedJobs = existing.recentlyChangedJobs || incoming.recentlyChangedJobs;
   existing.competitorOrComplaintPost =
     existing.competitorOrComplaintPost || incoming.competitorOrComplaintPost;
+  existing.openToWork = existing.openToWork || incoming.openToWork;
+  if (!existing.openToWorkPostUrl && incoming.openToWorkPostUrl) existing.openToWorkPostUrl = incoming.openToWorkPostUrl;
   existing.cvFound = existing.cvFound || incoming.cvFound;
   existing.matchedWatchPhrases = uniqueStrings([
     ...existing.matchedWatchPhrases,
@@ -93,13 +95,24 @@ function mergeCandidate(existing: RawCandidate, incoming: RawCandidate): void {
 export function dedupeCandidates(records: RawCandidate[]): RawCandidate[] {
   const byUrl = new Map<string, RawCandidate>();
   const byName = new Map<string, RawCandidate>();
+  const byMember = new Map<string, RawCandidate>();
   const order: RawCandidate[] = [];
+
+  function remember(record: RawCandidate, nameKey: string, nameIsUseful: boolean) {
+    const urlKey = canonicalProfileUrl(record.profileUrl);
+    if (urlKey) byUrl.set(urlKey, record);
+    if (nameIsUseful) byName.set(nameKey, record);
+    for (const key of memberKeysFrom(record.linkedinIds)) byMember.set(key, record);
+  }
 
   for (const record of records) {
     const urlKey = canonicalProfileUrl(record.profileUrl);
     const nameKey = canonicalName(record.name);
     const nameIsUseful = nameKey.length > 0 && nameKey !== UNPUBLISHED_NAME;
-    const existing = (urlKey ? byUrl.get(urlKey) : undefined) ?? (nameIsUseful ? byName.get(nameKey) : undefined);
+    const memberHit = memberKeysFrom(record.linkedinIds)
+      .map((key) => byMember.get(key))
+      .find((hit): hit is RawCandidate => Boolean(hit));
+    const existing = (urlKey ? byUrl.get(urlKey) : undefined) ?? memberHit ?? (nameIsUseful ? byName.get(nameKey) : undefined);
 
     if (!existing) {
       const copy: RawCandidate = {
@@ -110,15 +123,12 @@ export function dedupeCandidates(records: RawCandidate[]): RawCandidate[] {
         origins: [...(record.origins ?? [])],
       };
       order.push(copy);
-      if (urlKey) byUrl.set(urlKey, copy);
-      if (nameIsUseful) byName.set(nameKey, copy);
+      remember(copy, nameKey, nameIsUseful);
       continue;
     }
 
     mergeCandidate(existing, record);
-    const mergedUrl = canonicalProfileUrl(existing.profileUrl);
-    if (mergedUrl) byUrl.set(mergedUrl, existing);
-    if (nameIsUseful) byName.set(nameKey, existing);
+    remember(existing, nameKey, nameIsUseful);
   }
 
   return order;
@@ -194,6 +204,8 @@ function scoreOne(record: RawCandidate, spec: ParsedSpec): Candidate | null {
     spec,
   );
   const match = scoreMatch(record, spec, validation.status);
+  const openSignal = record.openToWork === true || Boolean(record.openToWorkPostUrl);
+  const score = spec.openToWork === true && openSignal ? Math.min(100, match.score + 10) : match.score;
   why.push({ label: VALIDATION_WHY[validation.status], points: 0 });
   for (const criterion of match.criteria) {
     why.push({ label: `${criterion.label}: ${criterion.reason}`, points: criterion.score });
@@ -220,7 +232,7 @@ function scoreOne(record: RawCandidate, spec: ParsedSpec): Candidate | null {
     source: sources[0] ?? "linkedin-profile",
     sources,
     snippet: record.snippet,
-    score: match.score,
+    score,
     subscores: match.criteria,
     why,
     matchedMustHaves,
@@ -231,12 +243,15 @@ function scoreOne(record: RawCandidate, spec: ParsedSpec): Candidate | null {
     cvFound: record.cvFound,
     sample: record.sample,
     validation,
+    openToWork: record.openToWork === true,
+    openToWorkPostUrl: record.openToWorkPostUrl ?? null,
   };
 }
 
 export function rankCandidates(
   records: RawCandidate[],
   spec: ParsedSpec,
+  options?: { limit?: number; preferOpenToWork?: boolean },
 ): { candidates: Candidate[]; afterDedupe: number; droppedForMustHave: number; matched: number } {
   const deduped = dedupeCandidates(records);
   const candidates: Candidate[] = [];
@@ -251,7 +266,12 @@ export function rankCandidates(
     candidates.push(scored);
   }
 
+  const preferOpen = options?.preferOpenToWork ?? spec.openToWork === true;
   candidates.sort((a, b) => {
+    if (preferOpen) {
+      const open = (candidate: Candidate) => candidate.openToWork || Boolean(candidate.openToWorkPostUrl);
+      if (open(a) !== open(b)) return open(a) ? -1 : 1;
+    }
     if (b.score !== a.score) return b.score - a.score;
     const experience = (candidate: Candidate) => candidate.subscores.find((item) => item.key === "experience")?.score ?? -1;
     if (experience(b) !== experience(a)) return experience(b) - experience(a);
@@ -260,7 +280,7 @@ export function rankCandidates(
   });
 
   return {
-    candidates: candidates.slice(0, RESULT_LIMIT),
+    candidates: candidates.slice(0, options?.limit ?? RESULT_LIMIT),
     afterDedupe: deduped.length,
     droppedForMustHave,
     matched: candidates.length,

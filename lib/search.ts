@@ -231,8 +231,11 @@ export async function searchCandidates(
 
   await Promise.all(jobs);
 
-  const enrichLimit = Math.min(10, Math.max(1, options.enrichTopN ?? 5));
-  const preview = rankCandidates(raw, spec);
+  const enrichLimit = Math.min(25, Math.max(1, options.enrichTopN ?? 10));
+  const preview = rankCandidates(raw, { ...spec, openToWork: false }, {
+    limit: Math.max(raw.length, 1),
+    preferOpenToWork: false,
+  });
   const urls = selectEnrichmentTargets(preview.candidates, enrichLimit)
     .map((candidate) => enrichmentQuery(candidate))
     .filter((url): url is string => Boolean(url));

@@ -9,7 +9,9 @@ export const ENRICH_MODE = "Profile details no email ($4 per 1k)";
 export const ENRICH_EMAIL_MODE = "Profile details + email search ($10 per 1k)";
 
 export const PROFILE_MAX_ITEMS = 10;
+export const PROFILE_PAGE_ITEMS = 25;
 export const POST_MAX_POSTS = 5;
+export const OPEN_TO_WORK_MAX_POSTS = 15;
 export const INDEED_MAX_ITEMS = 3;
 export const RESULT_LIMIT = 10;
 export const ACTOR_TIMEOUT_SECS = 240;
@@ -25,19 +27,33 @@ export function buildIndeedResumeSearchUrl(title: string, location: string): str
   return `https://resumes.indeed.com/search?${params.toString()}`;
 }
 
+export function openToWorkQueries(spec: Pick<ParsedSpec, "jobTitle" | "location">): string[] {
+  const title = spec.jobTitle.trim();
+  if (!title) return [];
+  const location = spec.location.trim();
+  return [
+    location ? `"open to work" ${title} ${location}` : `"open to work" ${title}`,
+    `"looking for my next role" ${title}`,
+  ];
+}
+
 export function buildActorPlans(spec: ParsedSpec): ActorPlan[] {
-  const postSkipped = spec.watchPhrases.length === 0;
+  const openQueries = spec.openToWork === true ? openToWorkQueries(spec) : [];
+  const postQueries = [...openQueries, ...spec.watchPhrases];
+  const postSkipped = postQueries.length === 0;
 
   return [
     {
       actor: PROFILE_ACTOR,
       purpose:
-        "People whose current title and location match the spec. Short profiles keep the search on one results page. The recent-job-change filter is off unless the form turns it on.",
+        spec.openToWork === true
+          ? "One full page of short profiles for this title and location. LinkedIn does not offer an Open to Work filter outside Recruiter, so the page stays at 25 profiles and the same search-page price."
+          : "People whose current title and location match the spec. Short profiles keep the search on one results page. The recent-job-change filter is off unless the form turns it on.",
       skipped: false,
       input: {
         profileScraperMode: "Short",
         searchQuery: spec.jobTitle,
-        maxItems: PROFILE_MAX_ITEMS,
+        maxItems: spec.openToWork === true ? PROFILE_PAGE_ITEMS : PROFILE_MAX_ITEMS,
         ...(spec.location ? { locations: [spec.location] } : {}),
         currentJobTitles: [spec.jobTitle],
         recentlyChangedJobs: spec.recentlyChangedJobs === true,
@@ -47,13 +63,15 @@ export function buildActorPlans(spec: ParsedSpec): ActorPlan[] {
     {
       actor: POST_ACTOR,
       purpose:
-        "Recent posts that mention the competitor tools or complaint phrases. Skipped when that list is empty. At most five posts, with reactions, comments, and full-profile enrichment left off.",
+        openQueries.length > 0
+          ? "Posts from the last month where someone says they are open to work or looking for their next role, plus any competitor phrases. At most fifteen posts."
+          : "Recent posts that mention the competitor tools or complaint phrases. Skipped when that list is empty. At most five posts, with reactions, comments, and full-profile enrichment left off.",
       skipped: postSkipped,
       input: postSkipped
         ? null
         : {
-            searchQueries: spec.watchPhrases,
-            maxPosts: POST_MAX_POSTS,
+            searchQueries: postQueries,
+            maxPosts: openQueries.length > 0 ? OPEN_TO_WORK_MAX_POSTS : POST_MAX_POSTS,
             postedLimit: "month",
             sortBy: "date",
             profileScraperMode: "short",

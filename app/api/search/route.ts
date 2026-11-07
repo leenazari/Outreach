@@ -59,6 +59,7 @@ export async function POST(request: Request) {
       useSampleData: false,
       includeIndeed,
       recentlyChangedJobs: record?.recentlyChangedJobs === true,
+      openToWork: record?.openToWork !== false,
     };
   } else {
     const parsed = parseSearchRequest(body);
@@ -70,6 +71,7 @@ export async function POST(request: Request) {
       useSampleData: false,
       includeIndeed,
       recentlyChangedJobs: record?.recentlyChangedJobs === true,
+      openToWork: record?.openToWork !== false,
     };
   }
 
@@ -77,7 +79,7 @@ export async function POST(request: Request) {
     const result = await searchCandidates(spec, {
       token: process.env.APIFY_TOKEN,
       includeEmail,
-      enrichTopN: Math.min(10, Math.max(1, Math.round(Number(process.env.ENRICH_TOP_N) || 5))),
+      enrichTopN: Math.min(25, Math.max(1, Math.round(Number(process.env.ENRICH_TOP_N) || 10))),
     });
     return NextResponse.json(result);
   } catch (error) {

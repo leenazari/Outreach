@@ -26,6 +26,7 @@ export type SearchRequest = {
   includeIndeed: boolean;
   includeEmail: boolean;
   recentlyChangedJobs: boolean;
+  openToWork: boolean;
 };
 
 export type ParsedSpec = {
@@ -40,6 +41,7 @@ export type ParsedSpec = {
   useSampleData: boolean;
   includeIndeed?: boolean;
   recentlyChangedJobs?: boolean;
+  openToWork?: boolean;
 };
 
 export type ScoreReason = {
@@ -168,6 +170,8 @@ export type Candidate = {
   cvFound: boolean;
   sample: boolean;
   validation: Validation;
+  openToWork: boolean;
+  openToWorkPostUrl: string | null;
 };
 
 export type SourceNotice = {
@@ -234,4 +238,6 @@ export type RawCandidate = {
   email?: string | null;
   photoUrl?: string | null;
   detailOnRecord?: boolean;
+  openToWork?: boolean;
+  openToWorkPostUrl?: string | null;
 };
