@@ -5,19 +5,18 @@ import {
   buildEnrichInput,
   ENRICH_ACTOR,
   INDEED_ACTOR,
-  linkedinProfileUrls,
   POST_ACTOR,
   PROFILE_ACTOR,
 } from "./actors";
 import { buildSearchSpend, sampleSpend, type SpendRunInput } from "./attribute";
 import { createApifyRunner, putStoreRecord, saveSearchGroup, SourceFailure, type ActorRunner, type ActorRunResult } from "./apify";
 import type { ActorRunSnapshot } from "./charge";
+import { applyEnrichment, enrichmentQuery, selectEnrichmentTargets } from "./enrich";
 import { normaliseIndeedResume, normaliseLinkedInPost, normaliseLinkedInProfile } from "./normalise";
 import { salaryLabel } from "./parse";
 import { buildExport, EXPORT_RECORD_KEY, postInterviewaWebhook } from "./interviewa";
 import { rankCandidates } from "./rank";
 import { buildSampleCandidates } from "./sample";
-import { canonicalName, canonicalProfileUrl } from "./text";
 import type { ParsedSpec, RawCandidate, SearchResponse, SourceId, SourceNotice, WorkRole } from "./types";
 
 const SOURCE_BY_ACTOR: Record<string, SourceId> = {
@@ -142,30 +141,6 @@ function stamp(
   return people;
 }
 
-function applyEnrichment(records: RawCandidate[], enriched: RawCandidate[]): void {
-  for (const extra of enriched) {
-    const url = canonicalProfileUrl(extra.profileUrl);
-    const name = canonicalName(extra.name);
-    const target = records.find((record) => {
-      const recordUrl = canonicalProfileUrl(record.profileUrl);
-      if (url && recordUrl && url === recordUrl) return true;
-      const recordName = canonicalName(record.name);
-      return Boolean(name && recordName && name === recordName && recordName !== "name not published");
-    });
-    if (!target) continue;
-    target.detailOnRecord = target.detailOnRecord || extra.detailOnRecord || (extra.experience?.length ?? 0) > 0;
-    if ((extra.experience?.length ?? 0) > 0) {
-      target.experience = [
-        ...(target.experience ?? []).filter((role) => role.source === "indeed-resume"),
-        ...(extra.experience ?? []),
-      ];
-    }
-    if (typeof extra.connections === "number") target.connections = extra.connections;
-    target.haystack = `${target.haystack}\n${extra.haystack}`;
-    target.origins = [...(target.origins ?? []), ...(extra.origins ?? [])];
-  }
-}
-
 export async function searchCandidates(
   spec: ParsedSpec,
   options: {
@@ -258,7 +233,9 @@ export async function searchCandidates(
 
   const enrichLimit = Math.min(10, Math.max(1, options.enrichTopN ?? 5));
   const preview = rankCandidates(raw, spec);
-  const urls = linkedinProfileUrls(preview.candidates.filter((candidate) => candidate.score >= 50)).slice(0, enrichLimit);
+  const urls = selectEnrichmentTargets(preview.candidates, enrichLimit)
+    .map((candidate) => enrichmentQuery(candidate))
+    .filter((url): url is string => Boolean(url));
   const remaining = SEARCH_BUDGET_MS - (Date.now() - budgetStart);
   if (urls.length === 0) {
     notices.push({

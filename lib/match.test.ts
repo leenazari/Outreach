@@ -90,6 +90,7 @@ describe("Interviewa export", () => {
       title: "Sales Executive",
       location: "London",
       locationRegion: "London",
+      company: "",
       companyType: "Sales",
       experienceSummary: "1 dated role on the public record.",
       skills: ["B2B sales"],

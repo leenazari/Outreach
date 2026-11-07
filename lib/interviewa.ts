@@ -14,6 +14,7 @@ export type InterviewaExportCandidate = {
   costAttributedUsd: number;
   sourceUrl: string | null;
   title: string;
+  company: string;
   locationRegion: string;
   skills: string[];
   companyType: string;
@@ -40,6 +41,7 @@ const CSV_COLUMNS = [
   "costAttributedUsd",
   "sourceUrl",
   "title",
+  "company",
   "locationRegion",
   "skills",
   "companyType",
@@ -65,6 +67,7 @@ export function toExportRows(candidates: Candidate[], spend: SearchSpend): Inter
         costAttributedUsd: cost?.totalUsd ?? 0,
         sourceUrl: candidate.sourceUrl,
         title: candidate.title,
+        company: candidate.company,
         locationRegion: candidate.locationRegion,
         skills: candidate.skills,
         companyType: candidate.companyType,

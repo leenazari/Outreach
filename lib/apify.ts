@@ -1,5 +1,5 @@
 import { ACTOR_TIMEOUT_SECS } from "./actors";
-import { readRunSnapshot, type ActorRunSnapshot } from "./charge";
+import { chargeIsSettled, readRunSnapshot, withSettledUsageTotal, type ActorRunSnapshot } from "./charge";
 import type { SourceId } from "./types";
 import { asRecord, asString } from "./text";
 
@@ -113,12 +113,20 @@ export function createApifyRunner(token: string, timeoutSecs = ACTOR_TIMEOUT_SEC
       run = (await getActorRun(token, run.id)) ?? run;
     }
 
-    if (run.status && TERMINAL.has(run.status) && settleWaitMs > 0) {
-      const wait = Math.min(settleWaitMs, Math.max(0, deadline - Date.now()));
-      if (wait > 0) {
-        await sleep(wait);
+    if (run.status && TERMINAL.has(run.status)) {
+      const budget = Math.min(Math.max(settleWaitMs, 8_000), Math.max(0, deadline - Date.now()));
+      const settleBy = Date.now() + budget;
+      let previous = "";
+      while (Date.now() < settleBy) {
+        const signature = `${run.usageTotalUsd ?? ""}:${JSON.stringify(run.chargedEventCounts)}:${JSON.stringify(run.accountedChargedEventCounts)}`;
+        if (chargeIsSettled(run) && signature === previous) break;
+        previous = signature;
+        const pause = Math.min(2_000, settleBy - Date.now());
+        if (pause <= 0) break;
+        await sleep(pause);
         run = (await getActorRun(token, run.id)) ?? run;
       }
+      run = withSettledUsageTotal(run);
     }
 
     const items = run.defaultDatasetId ? await getDatasetItems(token, run.defaultDatasetId) : [];

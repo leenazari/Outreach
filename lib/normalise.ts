@@ -1,3 +1,4 @@
+import { collectLinkedInIds, originalQueryUrls, preferredProfileUrl, readCurrentCompany, readIndustry } from "./linkedin";
 import type { RawCandidate, SourceId } from "./types";
 import { asRecord, asString, clip, haystackIncludes, stripContactDetails } from "./text";
 import { readConnections, readWorkRoles } from "./work";
@@ -38,17 +39,18 @@ function locationText(value: unknown): string {
 }
 
 function experienceBits(record: Record<string, unknown>): string[] {
-  const groups = [record.experience, record.experiences, record.currentPositions, record.positions];
+  const groups = [record.experience, record.experiences, record.currentPositions, record.currentPosition, record.positions];
   const bits: string[] = [];
   for (const group of groups) {
-    if (!Array.isArray(group)) continue;
-    for (const item of group) {
+    const list = Array.isArray(group) ? group : group && typeof group === "object" ? [group] : [];
+    for (const item of list) {
       const entry = asRecord(item);
       if (!entry) continue;
       const bit = [
-        asString(entry.title),
-        asString(entry.companyName) || asString(entry.company),
+        asString(entry.title) || asString(entry.position),
+        asString(entry.companyName) || asString(asRecord(entry.company)?.name) || asString(entry.company),
         asString(entry.description),
+        asString(entry.industry) || asString(asRecord(entry.company)?.industry),
       ]
         .filter(Boolean)
         .join(" ");
@@ -82,19 +84,27 @@ export function normaliseLinkedInProfile(item: unknown): RawCandidate | null {
   );
   if (!name) return null;
 
-  const positions = Array.isArray(record.currentPositions) ? record.currentPositions : [];
+  const positions = Array.isArray(record.currentPositions)
+    ? record.currentPositions
+    : Array.isArray(record.currentPosition)
+      ? record.currentPosition
+      : record.currentPosition
+        ? [record.currentPosition]
+        : [];
   const primary = asRecord(positions[0]);
   const headline = asString(record.headline) || asString(record.position);
-  const title = asString(primary?.title) || headline || "Title not listed";
+  const title = asString(primary?.title) || asString(primary?.position) || headline || "Title not listed";
   const location =
     locationText(record.location) || asString(primary?.locationName) || locationText(primary?.location);
-  const skills = collectSkills(record.skills);
+  const skills = collectSkills(record.skills).concat(collectSkills(record.topSkills));
   const summary = asString(record.summary) || asString(record.about);
   const experience = experienceBits(record).join("\n");
-  const profileUrl = asString(record.linkedinUrl) || asString(record.url) || asString(record.profileUrl) || null;
+  const company = readCurrentCompany(record);
+  const industry = readIndustry(record);
+  const profileUrl = preferredProfileUrl(record);
   const months = tenureMonths(record);
   const snippet = clip(
-    [headline, summary, skills.length ? `Skills: ${skills.join(", ")}` : ""].filter(Boolean).join(" · "),
+    [headline, company, industry, summary, skills.length ? `Skills: ${skills.join(", ")}` : ""].filter(Boolean).join(" · "),
     420,
   );
 
@@ -103,9 +113,13 @@ export function normaliseLinkedInProfile(item: unknown): RawCandidate | null {
     title: stripContactDetails(title),
     location,
     profileUrl,
+    linkedinIds: collectLinkedInIds(record),
+    queryUrls: originalQueryUrls(record),
+    company,
+    industry,
     sources: ["linkedin-profile"],
     snippet: stripContactDetails(snippet || title),
-    haystack: [name, title, location, headline, summary, skills.join("\n"), experience].join("\n"),
+    haystack: [name, title, company, industry, location, headline, summary, skills.join("\n"), experience].join("\n"),
     recentlyChangedJobs: months !== null && months <= 3,
     detailOnRecord: Boolean(summary || skills.length || experience),
     competitorOrComplaintPost: false,

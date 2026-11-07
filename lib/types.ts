@@ -146,10 +146,12 @@ export type Candidate = {
   title: string;
   location: string;
   locationRegion: string;
+  company: string;
   companyType: string;
   experienceSummary: string;
   skills: string[];
   profileUrl: string | null;
+  linkedinIds?: string[];
   sourceUrl: string | null;
   email: string | null;
   photoUrl: string | null;
@@ -213,6 +215,10 @@ export type RawCandidate = {
   title: string;
   location: string;
   profileUrl: string | null;
+  linkedinIds?: string[];
+  queryUrls?: string[];
+  company?: string;
+  industry?: string;
   sources: SourceId[];
   snippet: string;
   haystack: string;

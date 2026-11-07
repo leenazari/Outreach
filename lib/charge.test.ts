@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { parseRunCharge, readRunSnapshot } from "./charge";
+import { parseRunCharge, readRunSnapshot, withSettledUsageTotal } from "./charge";
 import { usdToMicros } from "./money";
 
 function run(extra: Record<string, unknown>) {
@@ -119,5 +119,24 @@ describe("Apify run charge", () => {
       charge.lines.reduce((sum, line) => sum + usdToMicros(line.usd), 0),
       usdToMicros(0.134),
     );
+  });
+
+  it("uses charged event counts times the run price when usageTotalUsd is still short", () => {
+    const preliminary = run({
+      usageTotalUsd: 0.012,
+      chargedEventCounts: { "profile-details": 5 },
+      accountedChargedEventCounts: { "profile-details": 3 },
+      pricingInfo: {
+        pricingModel: "PAY_PER_EVENT",
+        pricingPerEvent: {
+          actorChargeEvents: {
+            "profile-details": { eventTitle: "Profile details", eventPriceUsd: 0.004 },
+          },
+        },
+      },
+    });
+    const settled = withSettledUsageTotal(preliminary!);
+    const charge = parseRunCharge(settled, 5);
+    assert.equal(charge.totalUsd, 0.02);
   });
 });

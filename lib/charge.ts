@@ -153,6 +153,37 @@ export function readRunSnapshot(payload: unknown): ActorRunSnapshot | null {
   };
 }
 
+export function eventChargeUsd(run: ActorRunSnapshot): number | null {
+  const counts = run.chargedEventCounts;
+  if (!counts) return null;
+  let micros = 0;
+  let priced = 0;
+  for (const [name, count] of Object.entries(counts)) {
+    const unit = run.eventPrices[name]?.unitUsd;
+    if (unit === null || unit === undefined || count <= 0) continue;
+    micros += usdToMicros(unit) * count;
+    priced += count;
+  }
+  if (priced === 0) return null;
+  return microsToUsd(micros);
+}
+
+export function chargeIsSettled(run: ActorRunSnapshot): boolean {
+  if (!run.status || !TERMINAL.has(run.status)) return false;
+  if (run.usageTotalUsd === null) return false;
+  if (accountingLag(run)) return false;
+  const computed = eventChargeUsd(run);
+  if (computed !== null && usdToMicros(computed) > usdToMicros(run.usageTotalUsd)) return false;
+  return true;
+}
+
+export function withSettledUsageTotal(run: ActorRunSnapshot): ActorRunSnapshot {
+  const computed = eventChargeUsd(run);
+  if (computed === null) return run;
+  if (run.usageTotalUsd !== null && usdToMicros(run.usageTotalUsd) >= usdToMicros(computed)) return run;
+  return { ...run, usageTotalUsd: computed };
+}
+
 function accountingLag(run: ActorRunSnapshot): boolean {
   const charged = run.chargedEventCounts;
   const accounted = run.accountedChargedEventCounts;

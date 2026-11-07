@@ -319,6 +319,112 @@ describe("live failures", () => {
     assert.equal(live.candidates[0]?.name, "Priya Shah");
     assert.equal(live.candidates[0]?.profileUrl, "https://www.linkedin.com/in/priya");
   });
+
+  it("enriches the highest scores and merges the full profile by ACwAA id", async () => {
+    const queries: string[] = [];
+    const short = {
+      id: "ACwAAASharifa01",
+      firstName: "Sharifa",
+      lastName: "Sardal",
+      headline: "Sales Executive",
+      linkedinUrl: "https://www.linkedin.com/in/ACwAAASharifa01",
+      location: { linkedinText: "London, United Kingdom" },
+      currentPositions: [{ title: "Sales Executive", companyName: "Short Co" }],
+    };
+    const runner: ActorRunner = async (actor, input) => {
+      if (actor === ENRICH_ACTOR) {
+        queries.push(...((input.queries as string[]) ?? []));
+        return {
+          items: [
+            {
+              id: "ACwAAASharifa01",
+              objectUrn: "urn:li:fsd_profile:ACwAAASharifa01",
+              publicIdentifier: "sharifa-sardal",
+              firstName: "Sharifa",
+              lastName: "Sardal",
+              headline: "Sales Executive",
+              linkedinUrl: "https://www.linkedin.com/in/sharifa-sardal",
+              originalQuery: { query: "https://www.linkedin.com/in/ACwAAASharifa01" },
+              about: "B2B SaaS new business sales and CRM",
+              industry: { name: "Computer Software" },
+              skills: [{ name: "CRM" }, { name: "B2B SaaS" }],
+              currentPosition: [
+                {
+                  position: "Sales Executive",
+                  companyName: "Acme SaaS",
+                  description: "B2B SaaS sales and CRM",
+                  startDate: { year: 2022, month: 1 },
+                },
+              ],
+              location: { linkedinText: "London, United Kingdom" },
+            },
+          ],
+          run: null,
+        };
+      }
+      return {
+        items: [
+          short,
+          {
+            id: "ACwAAARussell01",
+            firstName: "Russell",
+            lastName: "Cox",
+            headline: "Sales Executive",
+            linkedinUrl: "https://www.linkedin.com/in/ACwAAARussell01",
+            location: { linkedinText: "London, United Kingdom" },
+            currentPositions: [{ title: "Sales Executive", companyName: "Russell Co" }],
+          },
+          {
+            id: "ACwAAARoshan001",
+            firstName: "Roshan",
+            lastName: "Vashi",
+            headline: "Sales Executive",
+            linkedinUrl: "https://www.linkedin.com/in/ACwAAARoshan001",
+            location: { linkedinText: "London, United Kingdom" },
+            currentPositions: [{ title: "Sales Executive", companyName: "Roshan Co" }],
+          },
+          {
+            firstName: "Arjun",
+            lastName: "Ahluwalia",
+            headline: "Sales Executive",
+            linkedinUrl: "https://www.linkedin.com/in/arjun-ahluwalia",
+            location: { linkedinText: "London, United Kingdom" },
+            currentPositions: [
+              {
+                title: "Sales Executive",
+                companyName: "Airline",
+                startedOn: { year: 2020, month: 5 },
+                endedOn: { year: 2019, month: 1 },
+              },
+            ],
+          },
+        ],
+        run: null,
+      };
+    };
+
+    const sales = {
+      ...spec,
+      jobTitle: "Sales Executive",
+      mustHave: ["B2B SaaS", "CRM"],
+      niceToHave: [],
+      watchPhrases: [],
+      useSampleData: false,
+    };
+    const before = rankCandidates([normaliseLinkedInProfile(short)!], sales).candidates[0]?.score ?? 0;
+    const result = await searchCandidates(sales, { token: "present", runActor: runner, enrichTopN: 3 });
+    assert.deepEqual(queries.sort(), [
+      "https://www.linkedin.com/in/ACwAAARoshan001",
+      "https://www.linkedin.com/in/ACwAAARussell01",
+      "https://www.linkedin.com/in/ACwAAASharifa01",
+    ]);
+    const sharifa = result.candidates.find((candidate) => candidate.name === "Sharifa Sardal");
+    assert.equal(sharifa?.company, "Acme SaaS");
+    assert.equal(sharifa?.profileUrl, "https://www.linkedin.com/in/sharifa-sardal");
+    assert.notEqual(sharifa?.score, before);
+    assert.equal(result.candidates.some((candidate) => candidate.profileUrl?.includes("arjun")), true);
+    assert.equal(queries.some((query) => query.includes("arjun")), false);
+  });
 });
 
 describe("normalisers", () => {

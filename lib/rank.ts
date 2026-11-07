@@ -2,6 +2,7 @@ import { RESULT_LIMIT } from "./actors";
 import type { Candidate, ParsedSpec, RawCandidate, ScoreReason, SourceId, ValidationStatus } from "./types";
 import { canonicalName, canonicalProfileUrl, clip, haystackIncludes, uniqueStrings } from "./text";
 import { companyType, locationRegion } from "./identity";
+import { isVanityLinkedInUrl } from "./linkedin";
 import { scoreMatch } from "./match";
 import { validateProfile } from "./validate";
 
@@ -59,7 +60,11 @@ function mergeCandidate(existing: RawCandidate, incoming: RawCandidate): void {
   } else if (!existing.location) {
     existing.location = incoming.location;
   }
-  if (!existing.profileUrl && incoming.profileUrl) existing.profileUrl = incoming.profileUrl;
+  if (isVanityLinkedInUrl(incoming.profileUrl) || !existing.profileUrl) existing.profileUrl = incoming.profileUrl;
+  existing.linkedinIds = uniqueStrings([...(existing.linkedinIds ?? []), ...(incoming.linkedinIds ?? [])]);
+  existing.queryUrls = uniqueStrings([...(existing.queryUrls ?? []), ...(incoming.queryUrls ?? [])]);
+  if (!existing.company && incoming.company) existing.company = incoming.company;
+  if (!existing.industry && incoming.industry) existing.industry = incoming.industry;
   existing.snippet = mergeText(existing.snippet, incoming.snippet, 700);
   existing.haystack = `${existing.haystack}\n${incoming.haystack}`;
   existing.recentlyChangedJobs = existing.recentlyChangedJobs || incoming.recentlyChangedJobs;
@@ -204,10 +209,12 @@ function scoreOne(record: RawCandidate, spec: ParsedSpec): Candidate | null {
     title: record.title,
     location: record.location || "Location not listed",
     locationRegion: locationRegion(record.location || ""),
+    company: record.company?.trim() || record.experience?.find((role) => role.company)?.company || "",
     companyType: companyType(record.title),
     experienceSummary: experienceSummary(record),
     skills,
     profileUrl: record.profileUrl,
+    linkedinIds: record.linkedinIds,
     sourceUrl: record.sourceUrl ?? (sources.every((source) => source === "indeed-resume") ? record.profileUrl : null),
     email: record.email ?? null,
     photoUrl: record.photoUrl ?? null,

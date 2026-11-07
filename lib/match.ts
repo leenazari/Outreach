@@ -90,6 +90,48 @@ function datedMonths(record: RawCandidate, now: Date): number {
 
 const NOT_ASSESSED = "not assessed";
 
+const INDUSTRY_FAMILIES: { id: string; label: string; pattern: RegExp }[] = [
+  { id: "software", label: "B2B software", pattern: /\b(b2b saas|saas|software|hr tech|fintech|devtools?)\b/i },
+  { id: "aviation", label: "aviation", pattern: /\b(commercial aviation|aviation|airline|airlines|aerospace|aircraft)\b/i },
+  { id: "healthcare", label: "healthcare", pattern: /\b(healthcare|hospital|clinical|pharma|pharmaceutical)\b/i },
+  { id: "finance", label: "financial services", pattern: /\b(investment bank|banking|insurance|hedge fund)\b/i },
+  { id: "retail", label: "retail", pattern: /\b(retail|e-commerce|ecommerce)\b/i },
+  { id: "energy", label: "energy", pattern: /\b(oil and gas|renewable energy)\b/i },
+  { id: "hospitality", label: "hospitality", pattern: /\b(hospitality|hotel chain)\b/i },
+  { id: "legal", label: "legal", pattern: /\b(law firm|legal services)\b/i },
+  { id: "realestate", label: "real estate", pattern: /\b(real estate|property development)\b/i },
+  { id: "manufacturing", label: "manufacturing", pattern: /\b(manufacturing|industrial equipment)\b/i },
+  { id: "recruitment", label: "recruitment", pattern: /\b(recruitment agency|staffing agency|executive search)\b/i },
+];
+
+function industryHits(text: string): { id: string; label: string }[] {
+  const hits: { id: string; label: string }[] = [];
+  for (const family of INDUSTRY_FAMILIES) {
+    if (family.pattern.test(text)) hits.push({ id: family.id, label: family.label });
+  }
+  return hits;
+}
+
+function industryConflict(spec: ParsedSpec, record: RawCandidate): string | null {
+  const specText = [spec.jobTitle, ...spec.mustHave, ...spec.niceToHave].join("\n");
+  const wanted = industryHits(specText);
+  if (wanted.length === 0) return null;
+  const profileText = [
+    record.industry,
+    record.company,
+    ...(record.experience ?? []).flatMap((role) => [role.title, role.company, role.detail]),
+    record.haystack,
+  ]
+    .filter(Boolean)
+    .join("\n");
+  const found = industryHits(profileText);
+  if (found.length === 0) return null;
+  if (found.some((hit) => wanted.some((item) => item.id === hit.id))) return null;
+  const specLabel = wanted.map((item) => item.label).join(", ");
+  const profileLabel = record.industry?.trim() || found.map((item) => item.label).join(", ");
+  return `Industry does not match the spec: ${profileLabel} is outside ${specLabel}.`;
+}
+
 function notAssessed(key: MatchCriterionKey): MatchCriterion {
   return {
     key,
@@ -129,6 +171,17 @@ function titleScore(spec: ParsedSpec, record: RawCandidate): MatchCriterion {
 }
 
 function skillsScore(spec: ParsedSpec, record: RawCandidate): MatchCriterion {
+  const conflict = industryConflict(spec, record);
+  if (conflict) {
+    return {
+      key: "skills",
+      label: CRITERION_LABEL.skills,
+      weight: MATCH_WEIGHTS.skills,
+      score: 0,
+      assessed: true,
+      reason: conflict,
+    };
+  }
   const phrases = [...spec.mustHave, ...spec.niceToHave];
   if (phrases.length === 0) {
     return {

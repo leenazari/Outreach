@@ -45,7 +45,9 @@ Every person who passes the must-have keyword gate gets a 0–100 match score fr
 | Seniority | 10 | How far the title's seniority sits from the spec title |
 | Recency | 10 | A recent job change, or a current role that started within 18 months |
 
-High risk caps the score at 49. Needs review does not. Every candidate is shown with the name, profile URL, photo, and source URL the actor returned. After the short-profile score, the top `ENRICH_TOP_N` people (default 5) who score at least 50 and have a LinkedIn URL are sent together to `harvestapi/linkedin-profile-scraper` in full-profile mode with no email, about $0.004 each. They are scored again from skills, about, and dated experience. A criterion with no data is left out of the total and shown as “not assessed”; the remaining weights are scaled back to 100. Email search ($0.01) runs for those same profiles only when the email switch is on. Include Indeed is off unless the form turns it on. This app does not log into Indeed.
+High risk caps the score at 49. Needs review does not. Every candidate is shown with the name, profile URL, photo, and source URL the actor returned. The card shows the current company from the full profile, or from the short profile’s current position, rather than a sector guessed from the title. The profile link is `linkedin.com/in/<publicIdentifier>` when the source has one, and the ACwAA link otherwise.
+
+After the short-profile score, the people are sorted by score and the top `ENRICH_TOP_N` (default 5) at 50 or above are sent together to `harvestapi/linkedin-profile-scraper` in full-profile mode with no email, about $0.004 each. A profile that only has an ACwAA id is still included. The full profile is merged back by that id or by `objectUrn` / `entityUrn`, then scored again from skills, about, experience, and current company. A stated industry that clearly conflicts with the spec (for example commercial aviation against B2B SaaS) scores skills at 0. A criterion with no data is left out of the total and shown as “not assessed”; the remaining weights are scaled back to 100. Email search ($0.01) runs for those same profiles only when the email switch is on. Include Indeed is off unless the form turns it on. This app does not log into Indeed.
 
 ### Interviewa export
 
@@ -71,6 +73,7 @@ High risk caps the score at 49. Needs review does not. Every candidate is shown 
       "costAttributedUsd": 0.014,
       "sourceUrl": null,
       "title": "Sales Executive",
+      "company": "Northwind",
       "locationRegion": "United Kingdom",
       "skills": ["B2B sales"],
       "companyType": "Sales"
@@ -101,7 +104,7 @@ Breakdown, in this order:
 4. For a pay-per-result actor, **`pricePerUnitUsd` × item count** is used only when that product equals `usageTotalUsd` exactly.
 5. If the lines above do not add up to `usageTotalUsd`, the difference is a remainder line, or the lines are scaled, until the sum matches to the micro-dollar. Scaled lines are marked **allocated**.
 
-`accountedChargedEventCounts` lagging behind `chargedEventCounts`, a missing `usageTotalUsd`, or a run that has not finished means the charge is not final. The first response after a run finishes can still be preliminary, so the search waits about ten seconds and reads the run again when the time budget allows. `/spend` always reads the run again. Sample mode never creates a run.
+`accountedChargedEventCounts` lagging behind `chargedEventCounts`, a missing `usageTotalUsd`, or a run that has not finished means the charge is not final. The first response after a run finishes can still be preliminary, so the search re-reads the run every couple of seconds until `usageTotalUsd` and the charged event counts stop changing. If that total is still below `chargedEventCounts` times the run’s own event price, the log uses the computed event charge. `/spend` always reads the run again. Sample mode never creates a run.
 
 ### Attribution
 

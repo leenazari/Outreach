@@ -56,12 +56,12 @@ export function readWorkRoles(
   record: Record<string, unknown>,
   source: WorkRole["source"],
 ): WorkRole[] {
-  const groups = [record.experience, record.experiences, record.positions, record.workExperience, record.currentPositions];
+  const groups = [record.experience, record.experiences, record.positions, record.workExperience, record.currentPositions, record.currentPosition];
   const roles: WorkRole[] = [];
   const seen = new Set<string>();
   for (const group of groups) {
-    if (!Array.isArray(group)) continue;
-    for (const item of group) {
+    const list = Array.isArray(group) ? group : group && typeof group === "object" ? [group] : [];
+    for (const item of list) {
       const entry = asRecord(item);
       if (!entry) continue;
       const title = asString(entry.title) || asString(entry.position) || asString(entry.jobTitle);

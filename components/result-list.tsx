@@ -219,8 +219,12 @@ function CandidateCard({
           )}
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
             {candidate.title}
-            <span aria-hidden> · </span>
-            {candidate.companyType}
+            {candidate.company ? (
+              <>
+                <span aria-hidden> · </span>
+                {candidate.company}
+              </>
+            ) : null}
             <span aria-hidden> · </span>
             {candidate.location}
           </p>
