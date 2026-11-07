@@ -21,12 +21,17 @@ export type SearchRequest = {
   salaryCurrency: string;
   mustHave: string;
   niceToHave: string;
+  seniority: string;
+  yearsExperience: string;
+  industry: string;
+  workplace: string;
   watchPhrases: string;
   useSampleData: boolean;
   includeIndeed: boolean;
   includeEmail: boolean;
   recentlyChangedJobs: boolean;
   openToWork: boolean;
+  lockedFields?: string[];
 };
 
 export type ParsedSpec = {
@@ -37,6 +42,10 @@ export type ParsedSpec = {
   salaryCurrency: string;
   mustHave: string[];
   niceToHave: string[];
+  seniority?: string;
+  yearsExperience?: string;
+  industry?: string;
+  workplace?: string;
   watchPhrases: string[];
   useSampleData: boolean;
   includeIndeed?: boolean;
@@ -212,6 +221,7 @@ export type SearchResponse = {
     mustHave: string[];
     niceToHave: string[];
     watchPhrases: string[];
+    searchedFor: string;
   };
   spend: SearchSpend;
 };

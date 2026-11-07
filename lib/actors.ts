@@ -1,5 +1,6 @@
 import type { ActorPlan, ParsedSpec } from "./types";
 import { canonicalProfileUrl } from "./text";
+import { extractTitle } from "./parse-speech";
 
 export const PROFILE_ACTOR = "harvestapi/linkedin-profile-search";
 export const POST_ACTOR = "harvestapi/linkedin-post-search";
@@ -27,14 +28,72 @@ export function buildIndeedResumeSearchUrl(title: string, location: string): str
   return `https://resumes.indeed.com/search?${params.toString()}`;
 }
 
+export const SEARCH_QUERY_MAX = 80;
+
+export function shortJobTitle(title: string): string {
+  const derived = extractTitle(title);
+  const words = (derived || title).replace(/\s+/g, " ").trim().split(/\s+/).filter(Boolean).slice(0, 6);
+  return words.join(" ").slice(0, SEARCH_QUERY_MAX);
+}
+
+function coreKeywords(spec: Pick<ParsedSpec, "jobTitle" | "mustHave" | "niceToHave">, title: string): string[] {
+  const keywords: string[] = [];
+  const titleKey = title.toLowerCase();
+  for (const phrase of [...spec.mustHave, ...spec.niceToHave]) {
+    if (keywords.length >= 2) break;
+    const cleaned = phrase.replace(/\s+/g, " ").trim();
+    if (!cleaned || cleaned.length > 24 || (/\d/.test(cleaned) && /year/i.test(cleaned))) continue;
+    if (titleKey.includes(cleaned.toLowerCase())) continue;
+    keywords.push(cleaned);
+  }
+  return keywords;
+}
+
+export function buildProfileSearchQuery(spec: Pick<ParsedSpec, "jobTitle" | "mustHave" | "niceToHave">): string {
+  const title = shortJobTitle(spec.jobTitle);
+  const query = [title, ...coreKeywords(spec, title)].join(" ").replace(/\s+/g, " ").trim();
+  return query.slice(0, SEARCH_QUERY_MAX);
+}
+
+function capPhrase(value: string): string {
+  return value.replace(/\s+/g, " ").trim().slice(0, SEARCH_QUERY_MAX);
+}
+
 export function openToWorkQueries(spec: Pick<ParsedSpec, "jobTitle" | "location">): string[] {
-  const title = spec.jobTitle.trim();
+  const title = shortJobTitle(spec.jobTitle);
   if (!title) return [];
   const location = spec.location.trim();
-  return [
-    location ? `"open to work" ${title} ${location}` : `"open to work" ${title}`,
-    `"looking for my next role" ${title}`,
-  ];
+  const withPlace = location ? `"open to work" ${title} ${location}` : `"open to work" ${title}`;
+  return [capPhrase(withPlace), capPhrase(`"looking for my next role" ${title}`)];
+}
+
+function firstWords(value: string, count: number): string {
+  return value.replace(/\s+/g, " ").trim().split(/\s+/).filter(Boolean).slice(0, count).join(" ").slice(0, 40);
+}
+
+export function shortenActorInput(input: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...input };
+  if (typeof next.searchQuery === "string") next.searchQuery = firstWords(next.searchQuery, 2);
+  if (Array.isArray(next.currentJobTitles)) {
+    next.currentJobTitles = next.currentJobTitles.map((item) => (typeof item === "string" ? firstWords(item, 2) : item));
+  }
+  if (Array.isArray(next.searchQueries)) {
+    next.searchQueries = next.searchQueries.map((item) => (typeof item === "string" ? capPhrase(item).slice(0, 40) : item));
+  }
+  if (Array.isArray(next.startUrls)) {
+    next.startUrls = next.startUrls.map((item) => {
+      if (!item || typeof item !== "object" || !("url" in item) || typeof item.url !== "string") return item;
+      try {
+        const parsed = new URL(item.url);
+        const query = parsed.searchParams.get("q");
+        if (query) parsed.searchParams.set("q", firstWords(query, 2));
+        return { ...item, url: parsed.toString() };
+      } catch {
+        return item;
+      }
+    });
+  }
+  return next;
 }
 
 export function buildActorPlans(spec: ParsedSpec): ActorPlan[] {
@@ -52,10 +111,10 @@ export function buildActorPlans(spec: ParsedSpec): ActorPlan[] {
       skipped: false,
       input: {
         profileScraperMode: "Short",
-        searchQuery: spec.jobTitle,
+        searchQuery: buildProfileSearchQuery(spec),
         maxItems: spec.openToWork === true ? PROFILE_PAGE_ITEMS : PROFILE_MAX_ITEMS,
         ...(spec.location ? { locations: [spec.location] } : {}),
-        currentJobTitles: [spec.jobTitle],
+        currentJobTitles: [shortJobTitle(spec.jobTitle)],
         recentlyChangedJobs: spec.recentlyChangedJobs === true,
         takePages: 1,
       },
@@ -70,7 +129,7 @@ export function buildActorPlans(spec: ParsedSpec): ActorPlan[] {
       input: postSkipped
         ? null
         : {
-            searchQueries: postQueries,
+            searchQueries: postQueries.map((phrase) => capPhrase(phrase)),
             maxPosts: openQueries.length > 0 ? OPEN_TO_WORK_MAX_POSTS : POST_MAX_POSTS,
             postedLimit: "month",
             sortBy: "date",
@@ -85,7 +144,7 @@ export function buildActorPlans(spec: ParsedSpec): ActorPlan[] {
         "Experimental Indeed resume search for at most three resumes. The actor requires a US residential proxy, often returns nothing, and a failed start is still billed. Skipped when Include Indeed is off.",
       skipped: spec.includeIndeed !== true,
       input: spec.includeIndeed !== true ? null : {
-        startUrls: [{ url: buildIndeedResumeSearchUrl(spec.jobTitle, spec.location) }],
+        startUrls: [{ url: buildIndeedResumeSearchUrl(shortJobTitle(spec.jobTitle), spec.location) }],
         maxItems: INDEED_MAX_ITEMS,
         proxyConfiguration: {
           useApifyProxy: true,

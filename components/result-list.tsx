@@ -104,8 +104,7 @@ function Ready({ result }: { result: SearchResponse }) {
         </p>
       ) : (
         <p className="rounded-2xl border border-border bg-card px-4 py-3 text-sm leading-6 text-muted-foreground">
-          Live public data for {result.spec.jobTitle} in {result.spec.location}. Salary band {result.spec.salaryLabel}{" "}
-          was not scored.
+          Searched LinkedIn for: {result.spec.searchedFor}. Salary band {result.spec.salaryLabel} was not scored.
         </p>
       )}
 

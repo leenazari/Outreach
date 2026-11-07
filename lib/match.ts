@@ -122,7 +122,7 @@ function profileIndustryText(record: RawCandidate): string {
 }
 
 function specWantsSoftware(spec: ParsedSpec): boolean {
-  return SOFTWARE_SPEC.test([spec.jobTitle, ...spec.mustHave, ...spec.niceToHave].join("\n"));
+  return SOFTWARE_SPEC.test([spec.jobTitle, spec.industry, ...spec.mustHave, ...spec.niceToHave].filter(Boolean).join("\n"));
 }
 
 function industryConflict(spec: ParsedSpec, record: RawCandidate): string | null {
@@ -240,7 +240,11 @@ function skillsScore(spec: ParsedSpec, record: RawCandidate): MatchCriterion {
 function experienceScore(spec: ParsedSpec, record: RawCandidate, now: Date): MatchCriterion {
   const months = datedMonths(record, now);
   if (months <= 0) return notAssessed("experience");
-  const yearsNeeded = yearRequirement(spec.mustHave);
+  const statedYears = Number(spec.yearsExperience);
+  const yearsNeeded =
+    Number.isFinite(statedYears) && statedYears > 0 && statedYears <= 40
+      ? statedYears
+      : yearRequirement(spec.mustHave);
   let score = 50;
   let reason = "Dated experience is on the record.";
   if (yearsNeeded) {
@@ -296,7 +300,7 @@ function seniorityScore(spec: ParsedSpec, record: RawCandidate): MatchCriterion 
       assessed: false,
     };
   }
-  const gap = Math.abs(seniority(record.title) - seniority(spec.jobTitle));
+  const gap = Math.abs(seniority(record.title) - seniority(spec.seniority ? `${spec.seniority} ${spec.jobTitle}` : spec.jobTitle));
   const score = gap === 0 ? 100 : gap === 1 ? 75 : gap === 2 ? 45 : 20;
   return {
     key: "seniority",

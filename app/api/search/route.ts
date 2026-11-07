@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { parsePhraseList, parseSearchRequest } from "@/lib/parse";
-import { interpretTranscript } from "@/lib/parse-speech";
+import { extractTitle, interpretTranscript } from "@/lib/parse-speech";
 import { MissingApifyTokenError, searchCandidates } from "@/lib/search";
 import type { ParsedSpec } from "@/lib/types";
+import { pickCurrency, pickParsedField } from "@/lib/form-fill";
 import { asString } from "@/lib/text";
 
 export const maxDuration = 300;
@@ -46,15 +47,23 @@ export async function POST(request: Request) {
       const message = error instanceof Error ? error.message : "The job spec could not be parsed.";
       return NextResponse.json({ error: publicError(message) }, { status: 502 });
     }
-    const fallbackTitle = cleanFirstLine(specText);
+    const edited = (key: string) => (record ? asString(record[key]) : "");
+    const locked = new Set(
+      Array.isArray(record?.lockedFields) ? record.lockedFields.filter((item): item is string => typeof item === "string") : [],
+    );
+    const pick = (key: string, parsed: string) => pickParsedField(edited(key), parsed, locked.has(key));
     spec = {
-      jobTitle: spoken.jobTitle || fallbackTitle,
-      location: spoken.location,
-      salaryMin: spoken.salaryMin,
-      salaryMax: spoken.salaryMax,
-      salaryCurrency: spoken.salaryCurrency || "GBP",
-      mustHave: parsePhraseList(spoken.mustHave),
-      niceToHave: parsePhraseList(spoken.niceToHave),
+      jobTitle: pick("jobTitle", spoken.jobTitle || extractTitle(specText)),
+      location: pick("location", spoken.location),
+      salaryMin: pick("salaryMin", spoken.salaryMin),
+      salaryMax: pick("salaryMax", spoken.salaryMax),
+      salaryCurrency: pickCurrency(edited("salaryCurrency"), spoken.salaryCurrency, locked.has("salaryCurrency")),
+      mustHave: parsePhraseList(pick("mustHave", spoken.mustHave)),
+      niceToHave: parsePhraseList(pick("niceToHave", spoken.niceToHave)),
+      seniority: pick("seniority", spoken.seniority),
+      yearsExperience: pick("yearsExperience", spoken.yearsExperience),
+      industry: pick("industry", spoken.industry),
+      workplace: pick("workplace", spoken.workplace),
       watchPhrases: parsePhraseList(record ? asString(record.watchPhrases) : "", 3),
       useSampleData: false,
       includeIndeed,
@@ -88,13 +97,6 @@ export async function POST(request: Request) {
     console.error("candidate search failed");
     return NextResponse.json({ error: publicError(message) }, { status });
   }
-}
-
-function cleanFirstLine(text: string): string {
-  const firstLine = text.split(/\n/)[0] ?? text;
-  const firstClause = firstLine.split(",")[0] ?? firstLine;
-  const title = firstClause.replace(/^[\s,:;.-]+|[\s,:;.-]+$/g, "").replace(/\s+/g, " ").trim();
-  return title || text.trim().slice(0, 120);
 }
 
 function publicError(message: string): string {

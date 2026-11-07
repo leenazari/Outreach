@@ -57,7 +57,7 @@ describe("actor inputs", () => {
     assert.equal(profile?.skipped, false);
     assert.deepEqual(profile?.input, {
       profileScraperMode: "Short",
-      searchQuery: "Senior Product Designer",
+      searchQuery: "Senior Product Designer Figma user research",
       maxItems: 10,
       locations: ["London"],
       currentJobTitles: ["Senior Product Designer"],
@@ -88,6 +88,25 @@ describe("actor inputs", () => {
     assert.match(indeedInput.startUrls[0]?.url ?? "", /resumes\.indeed\.com\/search\?/);
     assert.match(indeedInput.startUrls[0]?.url ?? "", /q=Senior\+Product\+Designer/);
     assert.match(indeedInput.startUrls[0]?.url ?? "", /l=London/);
+  });
+
+  it("retries a 400 once with a shorter query", async () => {
+    const calls: string[] = [];
+    const runner: ActorRunner = async (actor, input) => {
+      calls.push(`${actor}:${String((input as { searchQuery?: string }).searchQuery ?? "")}`);
+      if (actor === PROFILE_ACTOR && calls.filter((call) => call.startsWith(PROFILE_ACTOR)).length === 1) {
+        throw new Error("harvestapi/linkedin-profile-search returned HTTP 400 invalid-input: Field input.searchQuery must NOT have more than 300 characters");
+      }
+      return { items: [], run: null };
+    };
+    const result = await searchCandidates(
+      { ...spec, openToWork: false, watchPhrases: [], includeIndeed: false },
+      { token: "present", runActor: runner },
+    );
+    const profileCalls = calls.filter((call) => call.startsWith(PROFILE_ACTOR));
+    assert.equal(profileCalls.length, 2);
+    assert.ok((profileCalls[1]?.length ?? 100) < (profileCalls[0]?.length ?? 0));
+    assert.match(result.notices.map((notice) => notice.message).join(" "), /shorter title/);
   });
 
   it("skips Indeed when Include Indeed is off", () => {

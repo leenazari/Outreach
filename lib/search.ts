@@ -3,6 +3,8 @@ import {
   actorLabel,
   buildActorPlans,
   buildEnrichInput,
+  buildProfileSearchQuery,
+  shortenActorInput,
   ENRICH_ACTOR,
   INDEED_ACTOR,
   POST_ACTOR,
@@ -54,6 +56,11 @@ function failureMessage(source: SourceId, detail: string): string {
   return `LinkedIn profile search failed: ${detail}`;
 }
 
+function isBadActorInput(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : "";
+  return /\b400\b/.test(message) || /invalid-input/i.test(message);
+}
+
 function describeActorError(error: unknown): string {
   if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
     return "the run timed out before it returned dataset items.";
@@ -101,6 +108,9 @@ function responseFor(
       mustHave: spec.mustHave,
       niceToHave: spec.niceToHave,
       watchPhrases: spec.watchPhrases,
+      searchedFor: spec.location.trim()
+        ? `${buildProfileSearchQuery(spec)}, ${spec.location.trim()}`
+        : buildProfileSearchQuery(spec),
     },
     spend,
     candidates: ranked.candidates,
@@ -204,7 +214,18 @@ export async function searchCandidates(
       const source = SOURCE_BY_ACTOR[plan.actor] ?? "linkedin-profile";
       let result: ActorRunResult;
       try {
-        result = await runActor(plan.actor, plan.input ?? {});
+        try {
+          result = await runActor(plan.actor, plan.input ?? {});
+        } catch (error) {
+          const shorter = plan.input ? shortenActorInput(plan.input) : null;
+          if (!shorter || !isBadActorInput(error) || JSON.stringify(shorter) === JSON.stringify(plan.input)) throw error;
+          notices.push({
+            source,
+            level: "info",
+            message: "The first query was too long for the actor, so it was sent again with a shorter title.",
+          });
+          result = await runActor(plan.actor, shorter);
+        }
       } catch (error) {
         const run = error instanceof SourceFailure ? error.run : null;
         runs.push({ actor: plan.actor, items: [], run });

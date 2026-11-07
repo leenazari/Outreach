@@ -1,11 +1,15 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { VoiceSpec } from "@/components/voice-spec";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { CURRENCIES } from "@/components/demo-spec";
 import { estimateSearchCost, formatEstimate } from "@/lib/estimate";
+import { applyParsedSpec, type ParsedSpecFields } from "@/lib/form-fill";
 import type { SearchRequest } from "@/lib/types";
 
 type SpecFormProps = {
@@ -36,9 +40,40 @@ function FieldHint({ children }: { children: string }) {
 }
 
 export function SpecForm({ value, loading, onChange, onSubmit }: SpecFormProps) {
+  const valueRef = useRef(value);
+  valueRef.current = value;
+  const touched = useRef(new Set<string>());
+
   function update<K extends keyof SearchRequest>(key: K, next: SearchRequest[K]) {
-    onChange({ ...value, [key]: next });
+    onChange({ ...valueRef.current, [key]: next });
   }
+
+  function edit<K extends keyof SearchRequest>(key: K, next: SearchRequest[K]) {
+    touched.current.add(String(key));
+    onChange({ ...valueRef.current, [key]: next, lockedFields: [...touched.current] });
+  }
+
+  useEffect(() => {
+    const text = value.specText.trim();
+    if (text.length < 12) return;
+    const handle = window.setTimeout(() => {
+      void fetch("/api/parse-spec", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript: text }),
+      })
+        .then(async (response) => {
+          if (!response.ok) return null;
+          return (await response.json()) as Partial<ParsedSpecFields>;
+        })
+        .then((parsed) => {
+          if (!parsed || valueRef.current.specText.trim() !== text) return;
+          onChange(applyParsedSpec(valueRef.current, parsed, touched.current));
+        })
+        .catch(() => undefined);
+    }, 400);
+    return () => window.clearTimeout(handle);
+  }, [onChange, value.specText]);
 
   return (
     <form
@@ -65,9 +100,67 @@ export function SpecForm({ value, loading, onChange, onSubmit }: SpecFormProps) 
           onChange={(event) => update("specText", event.target.value)}
         />
         <FieldHint>
-          The server reads this into a title, location, pay band, and requirements. UK as a place name is a poor
-          LinkedIn filter. Prefer United Kingdom or a city.
+          The full text is kept for scoring. LinkedIn is searched with a short title and the location field. Fields
+          below fill in from this text and stay editable.
         </FieldHint>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-2">
+          <Label htmlFor="jobTitle">Job title</Label>
+          <Input id="jobTitle" value={value.jobTitle} onChange={(event) => edit("jobTitle", event.target.value)} />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="location">Location</Label>
+          <Input id="location" value={value.location} onChange={(event) => edit("location", event.target.value)} />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="seniority">Seniority</Label>
+          <Input id="seniority" value={value.seniority} onChange={(event) => edit("seniority", event.target.value)} />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="yearsExperience">Years of experience</Label>
+          <Input id="yearsExperience" value={value.yearsExperience} onChange={(event) => edit("yearsExperience", event.target.value)} />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="salaryMin">Pay from</Label>
+          <Input id="salaryMin" value={value.salaryMin} onChange={(event) => edit("salaryMin", event.target.value)} />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="salaryMax">Pay to</Label>
+          <Input id="salaryMax" value={value.salaryMax} onChange={(event) => edit("salaryMax", event.target.value)} />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="salaryCurrency">Currency</Label>
+          <select
+            id="salaryCurrency"
+            value={value.salaryCurrency}
+            onChange={(event) => edit("salaryCurrency", event.target.value)}
+            className="h-11 rounded-xl border border-input bg-card px-3 text-sm"
+          >
+            {CURRENCIES.map((currency) => (
+              <option key={currency} value={currency}>
+                {currency}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="workplace">Remote / hybrid</Label>
+          <Input id="workplace" value={value.workplace} onChange={(event) => edit("workplace", event.target.value)} placeholder="Remote, hybrid, or office" />
+        </div>
+        <div className="grid gap-2 sm:col-span-2">
+          <Label htmlFor="industry">Industry</Label>
+          <Input id="industry" value={value.industry} onChange={(event) => edit("industry", event.target.value)} />
+        </div>
+        <div className="grid gap-2 sm:col-span-2">
+          <Label htmlFor="mustHave">Must-haves</Label>
+          <Textarea id="mustHave" rows={3} value={value.mustHave} onChange={(event) => edit("mustHave", event.target.value)} />
+        </div>
+        <div className="grid gap-2 sm:col-span-2">
+          <Label htmlFor="niceToHave">Nice-to-haves</Label>
+          <Textarea id="niceToHave" rows={2} value={value.niceToHave} onChange={(event) => edit("niceToHave", event.target.value)} />
+        </div>
       </div>
 
       <div className="grid gap-2">

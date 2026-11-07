@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { buildActorPlans, buildProfileSearchQuery, PROFILE_ACTOR, SEARCH_QUERY_MAX } from "./actors";
 import { interpretTranscript, parseSpokenSpecRules } from "./parse-speech";
 import { salaryLabel } from "./parse";
 import { rankCandidates } from "./rank";
@@ -32,7 +33,51 @@ describe("spoken spec parser", () => {
 
     assert.equal(parseSpokenSpecRules("budget is 45k").salaryMin, "45000");
     assert.equal(parseSpokenSpecRules("needs a CRM and a driving licence").mustHave, "CRM\ndriving licence");
+    assert.equal(
+      parseSpokenSpecRules("must have CRM experience, B2B SaaS, £45,000 to £55,000").mustHave,
+      "CRM experience\nB2B SaaS",
+    );
     assert.equal(parseSpokenSpecRules("bonus: company car").niceToHave, "company car");
+  });
+
+  it("derives a short title from a long voice spec", () => {
+    const filler = "who can own campaigns, talk to founders, and build a team that sells into mid-market companies across the UK. ";
+    const voice = `I'm looking for a marketing executive ${filler.repeat(12)} in London, hybrid, 5+ years, must have CRM experience, B2B SaaS`;
+    assert.ok(voice.length > 600);
+    const parsed = parseSpokenSpecRules(voice);
+    assert.equal(parsed.jobTitle, "marketing executive");
+    assert.equal(parsed.location, "London");
+    assert.equal(parsed.seniority, "");
+    assert.equal(parsed.yearsExperience, "5");
+    assert.match(parsed.industry, /SaaS/i);
+    assert.equal(parsed.workplace, "Hybrid");
+    assert.ok(parsed.jobTitle.length <= 80);
+    assert.equal(parsed.jobTitle.includes(filler.slice(0, 40)), false);
+    const query = buildProfileSearchQuery({
+      jobTitle: voice,
+      mustHave: parsed.mustHave.split("\n").filter(Boolean),
+      niceToHave: [],
+    });
+    assert.ok(query.length <= SEARCH_QUERY_MAX);
+    assert.ok(query.length <= 300);
+    assert.match(query, /^marketing executive/i);
+    assert.equal(query.toLowerCase().includes("founders"), false);
+    const plans = buildActorPlans({
+      jobTitle: voice,
+      location: parsed.location,
+      salaryMin: "",
+      salaryMax: "",
+      salaryCurrency: "GBP",
+      mustHave: parsed.mustHave.split("\n").filter(Boolean),
+      niceToHave: [],
+      watchPhrases: [],
+      useSampleData: false,
+      openToWork: true,
+    });
+    const profile = plans.find((plan) => plan.actor === PROFILE_ACTOR);
+    assert.equal(profile?.input && (profile.input as { searchQuery: string }).searchQuery, query);
+    assert.deepEqual(profile?.input && (profile.input as { locations?: string[] }).locations, ["London"]);
+    assert.ok(!JSON.stringify(profile?.input).includes(voice.slice(0, 120)));
   });
 
   it("reads a pasted spec that does not say looking for", () => {
