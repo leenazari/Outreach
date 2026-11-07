@@ -79,4 +79,71 @@ describe("profile validation", () => {
     assert.match(result.reasons.map((reason) => reason.summary).join(" "), /ends before it starts/);
     assert.equal(JSON.stringify(result).toLowerCase().includes("fraud"), false);
   });
+
+  it("does not mark related employers or a side founder role as high risk", () => {
+    const related = validateProfile(
+      {
+        title: "Sales Executive",
+        location: "London",
+        connections: 500,
+        enriched: true,
+        experience: [
+          role({ title: "Sales Executive", company: "Refinitiv", start: "2018-01", end: "2021-06" }),
+          role({ title: "Account Executive", company: "Thomson Reuters", start: "2019-01", end: "2022-01" }),
+          role({ title: "Sales Executive", company: "LSEG", start: "2022-02", end: null }),
+        ],
+      },
+      { mustHave: [] },
+      now,
+    );
+    assert.notEqual(related.status, "risk");
+
+    const founder = validateProfile(
+      {
+        title: "Sales Executive",
+        location: "London",
+        connections: 500,
+        enriched: true,
+        experience: [
+          role({ title: "Sales Executive", company: "Northwind", start: "2018-01", end: null }),
+          role({ title: "Co-founder", company: "Side Project", start: "2020-01", end: null }),
+        ],
+      },
+      { mustHave: [] },
+      now,
+    );
+    assert.notEqual(founder.status, "risk");
+  });
+
+  it("reserves high risk for stacked full-time jobs and a future date", () => {
+    const crowded = validateProfile(
+      {
+        title: "Sales Executive",
+        location: "London",
+        connections: 500,
+        enriched: true,
+        experience: [
+          role({ title: "Sales Executive", company: "Alpha Corp", start: "2020-01", end: null }),
+          role({ title: "Sales Executive", company: "Beta Ltd", start: "2020-01", end: null }),
+          role({ title: "Sales Executive", company: "Gamma Plc", start: "2020-01", end: null }),
+        ],
+      },
+      { mustHave: [] },
+      now,
+    );
+    assert.equal(crowded.status, "risk");
+
+    const future = validateProfile(
+      {
+        title: "Sales Executive",
+        location: "London",
+        connections: 500,
+        enriched: true,
+        experience: [role({ title: "Sales Executive", company: "Northwind", start: "2027-06", end: null })],
+      },
+      { mustHave: [] },
+      now,
+    );
+    assert.equal(future.status, "risk");
+  });
 });

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { HIGH_RISK_SCORE_CAP, MATCH_WEIGHTS, scoreMatch } from "./match";
+import { HIGH_RISK_SCORE_CAP, INDUSTRY_SCORE_CAP, MATCH_WEIGHTS, scoreMatch } from "./match";
 import { buildExport } from "./interviewa";
 import type { Candidate, ParsedSpec, RawCandidate } from "./types";
 
@@ -75,10 +75,55 @@ describe("match scoring", () => {
     assert.ok(scored.score > 50);
   });
 
-  it("caps a high-risk profile below the default gate", () => {
-    const scored = scoreMatch(record({}), spec, "risk", new Date("2026-11-07T00:00:00.000Z"));
-    assert.equal(scored.unlockBlocked, true);
-    assert.ok(scored.score <= HIGH_RISK_SCORE_CAP);
+  it("does not reduce the match score for a high-risk label", () => {
+    const when = new Date("2026-11-07T00:00:00.000Z");
+    const plain = scoreMatch(record({}), spec, "verified", when);
+    const risk = scoreMatch(record({}), spec, "risk", when);
+    assert.equal(risk.score, plain.score);
+    assert.ok(plain.score > HIGH_RISK_SCORE_CAP);
+  });
+
+  it("caps a football club sales profile for a B2B SaaS spec", () => {
+    const saas = { ...spec, mustHave: ["B2B SaaS", "CRM experience"], niceToHave: ["recruiting or HR tech"] };
+    const scored = scoreMatch(
+      record({
+        title: "Senior Sales Executive",
+        company: "Fulham FC",
+        industry: "Spectator Sports",
+        haystack: "Senior Sales Executive\nFulham FC\nSpectator Sports\nLondon",
+        detailOnRecord: true,
+        experience: [
+          {
+            title: "Senior Sales Executive",
+            company: "Fulham FC",
+            location: "London",
+            start: "2019-01",
+            end: null,
+            detail: "Club partnerships",
+            source: "linkedin-profile",
+          },
+        ],
+      }),
+      saas,
+      "verified",
+      new Date("2026-11-07T00:00:00.000Z"),
+    );
+    assert.ok(scored.score <= INDUSTRY_SCORE_CAP);
+    assert.match(scored.criteria.find((item) => item.key === "skills")?.reason ?? "", /Spectator Sports|Fulham FC/);
+  });
+
+  it("matches CRM and new-business keywords from the must-haves", () => {
+    const scored = scoreMatch(
+      record({
+        haystack: "Sales Executive\nLondon\nHubSpot pipeline and business development",
+        detailOnRecord: true,
+        industry: "Software Development",
+      }),
+      { ...spec, mustHave: ["CRM experience", "3+ years new business sales"], niceToHave: [] },
+      "verified",
+      new Date("2026-11-07T00:00:00.000Z"),
+    );
+    assert.equal(scored.criteria.find((item) => item.key === "skills")?.score, 100);
   });
 });
 

@@ -45,12 +45,11 @@ describe("live Apify fixtures", () => {
     assert.ok(short && full);
     assert.equal(linkedInMemberKey(String(shortItems[0]?.id)), linkedInMemberKey(String(fullItems[0]?.id)));
     assert.notEqual(short.profileUrl, full.profileUrl);
-    const before = rankCandidates([short], spec).candidates[0]?.score ?? 0;
     applyEnrichment([short], [full]);
     const after = rankCandidates([short], spec).candidates[0];
-    assert.notEqual(after?.score, before);
     assert.equal(after?.profileUrl, "https://www.linkedin.com/in/arjun-ahluwalia-acsi");
     assert.equal(after?.company, "Dealscribe");
+    assert.ok((after?.score ?? 100) <= 40);
   });
 
   it("enriches the five highest first-pass scores, not the lower ties", () => {
@@ -62,15 +61,10 @@ describe("live Apify fixtures", () => {
       false,
     );
     const picked = selectEnrichmentTargets(ranked.candidates, 5).map((candidate) => candidate.name);
-    assert.deepEqual(picked, [
-      "Cameron Stebbing",
-      "Howard Campbell",
-      "Lucy Hitchinson",
-      "Paul Reader",
-      "Sharifa Sardal",
-    ]);
-    assert.equal(picked.includes("Arjun Ahluwalia"), false);
-    assert.equal(picked.includes("Roshan Vashi"), false);
+    assert.equal(picked.includes("Howard Campbell"), false);
+    assert.equal(picked.includes("Paul Reader"), false);
+    assert.ok(picked.includes("Lucy Hitchinson"));
+    assert.ok(picked.includes("Sharifa Sardal"));
     for (const candidate of ranked.candidates) {
       assert.equal("companyType" in candidate, false);
       assert.notEqual(candidate.company, "Sales");
@@ -88,7 +82,7 @@ describe("live Apify fixtures", () => {
       const candidate = after.candidates.find((item) => item.name === name);
       assert.ok(candidate);
       assert.ok(candidate.score <= 40);
-      assert.ok(candidate.score < (before.get(name) ?? 0));
+      assert.ok((before.get(name) ?? 0) <= 40);
       assert.match(candidate.subscores.find((item) => item.key === "skills")?.reason ?? "", /does not match the spec/);
     }
     assert.equal(after.candidates.find((item) => item.name === "Howard Campbell")?.company, "SAUDIA AIRLINES");

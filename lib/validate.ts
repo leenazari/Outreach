@@ -43,11 +43,34 @@ function normalCompany(value: string): string {
     .trim();
 }
 
+const RELATED_EMPLOYERS = [
+  ["refinitiv", "thomson reuters", "reuters", "lseg", "london stock exchange"],
+  ["facebook", "meta", "instagram"],
+  ["google", "alphabet", "youtube"],
+  ["microsoft", "linkedin"],
+];
+
 function companiesDisagree(left: string, right: string): boolean {
   const a = normalCompany(left);
   const b = normalCompany(right);
   if (!a || !b) return false;
-  return !a.includes(b) && !b.includes(a);
+  if (a.includes(b) || b.includes(a)) return false;
+  const related = RELATED_EMPLOYERS.some(
+    (group) => group.some((name) => a.includes(name)) && group.some((name) => b.includes(name)),
+  );
+  return !related;
+}
+
+function employerKey(company: string): string {
+  const normal = normalCompany(company);
+  for (const group of RELATED_EMPLOYERS) {
+    if (group.some((name) => normal.includes(name))) return group[0] ?? normal;
+  }
+  return normal;
+}
+
+function sideRole(title: string): boolean {
+  return /\b(co-founder|cofounder|founder|advisor|advisory|non-executive|volunteer|mentor)\b/i.test(title);
 }
 
 function locationsDisagree(left: string, right: string): boolean {
@@ -118,10 +141,21 @@ export function validateProfile(
     }
   }
 
-  const sensible = dated.filter((role) => role.endIndex >= role.startIndex);
+  const nowIndex = monthIndex(yearMonthNow(now));
+  for (const role of dated) {
+    if (nowIndex !== null && role.startIndex > nowIndex) {
+      reasons.push({
+        severe: true,
+        summary: "A role is dated in the future.",
+        evidence: `${role.title} at ${role.company || "an unnamed employer"} starts ${formatYearMonth(role.start ?? "")}.`,
+      });
+    }
+  }
+
+  const sensible = dated.filter((role) => role.endIndex >= role.startIndex && !sideRole(role.title));
   const byMonth = new Map<number, Set<string>>();
   for (const role of sensible) {
-    const company = normalCompany(role.company) || role.title.toLowerCase();
+    const company = employerKey(role.company) || role.title.toLowerCase();
     for (let month = role.startIndex; month <= role.endIndex; month += 1) {
       const names = byMonth.get(month) ?? new Set<string>();
       names.add(company);
@@ -135,7 +169,7 @@ export function validateProfile(
     for (let other = index + 1; other < sensible.length; other += 1) {
       const left = sensible[index];
       const right = sensible[other];
-      if (!left || !right || !companiesDisagree(left.company, right.company)) continue;
+      if (!left || !right || sideRole(left.title) || sideRole(right.title) || !companiesDisagree(left.company, right.company)) continue;
       const overlap = Math.min(left.endIndex, right.endIndex) - Math.max(left.startIndex, right.startIndex) + 1;
       if (overlap >= 2) {
         overlapPairs.push(
@@ -162,7 +196,7 @@ export function validateProfile(
   const veryShort = sensible.filter((role) => durationMonths(role) < 4);
   if (veryShort.length >= 4) {
     reasons.push({
-      severe: true,
+      severe: false,
       summary: "Several very short roles are listed one after another.",
       evidence: `${veryShort.length} dated roles each lasted under four months.`,
     });
@@ -176,13 +210,7 @@ export function validateProfile(
 
   const totalMonths = coveredMonths(sensible);
   const leader = [input.title, ...roles.map((role) => role.title)].sort((a, b) => seniority(b) - seniority(a))[0] ?? "";
-  if (seniority(leader) >= 6 && totalMonths > 0 && totalMonths < 12) {
-    reasons.push({
-      severe: true,
-      summary: "A senior title appears with under a year of dated public experience.",
-      evidence: `${leader} is listed, and the dated roles add up to ${totalMonths} months.`,
-    });
-  } else if (seniority(leader) >= 6 && totalMonths > 0 && totalMonths < 24) {
+  if (seniority(leader) >= 6 && totalMonths > 0 && totalMonths < 24) {
     reasons.push({
       severe: false,
       summary: "A senior title appears with a short dated public history.",
@@ -230,7 +258,7 @@ export function validateProfile(
 
   if (typeof input.connections === "number" && input.connections < 10 && dated.length === 0) {
     reasons.push({
-      severe: true,
+      severe: false,
       summary: "The public profile shows very few connections and no dated work history.",
       evidence: `LinkedIn shows ${input.connections} connections, and no dated roles were returned.`,
     });
@@ -244,7 +272,7 @@ export function validateProfile(
 
   if (dated.length === 0 && seniority(input.title) >= 6) {
     reasons.push({
-      severe: true,
+      severe: false,
       summary: "A senior title is listed without dated public work history.",
       evidence: `${input.title} is on the profile, and no start or end dates were returned.`,
     });
@@ -260,6 +288,7 @@ export function validateProfile(
   if (thinHistory) {
     for (const reason of reasons) {
       if (reason.summary === "A public date range ends before it starts.") continue;
+      if (reason.summary === "A role is dated in the future.") continue;
       reason.severe = false;
     }
   }

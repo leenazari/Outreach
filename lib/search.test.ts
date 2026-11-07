@@ -17,7 +17,7 @@ import { parsePhraseList, parseSearchRequest } from "./parse";
 import { estimateSearchCost } from "./estimate";
 import { dedupeCandidates, matchIsOpen, rankCandidates } from "./rank";
 import type { ParsedSpec, RawCandidate } from "./types";
-import { canonicalProfileUrl } from "./text";
+import { canonicalProfileUrl, cleanLinkedInUrl } from "./text";
 
 const spec: ParsedSpec = {
   jobTitle: "Senior Product Designer",
@@ -255,7 +255,7 @@ describe("ranking", () => {
     assert.equal(avery?.validation.status, "verified");
     assert.equal(indeed?.name, "Riley Chen");
     assert.equal(locked?.name, "Morgan Adeyemi");
-    assert.ok((locked?.score ?? 100) <= 49);
+    assert.equal(locked?.validation.status, "risk");
     assert.equal(matchIsOpen(80), true);
     assert.equal(matchIsOpen(79), false);
     assert.equal(result.spend.totalUsd, 0);
@@ -277,6 +277,10 @@ describe("ranking", () => {
     assert.equal(
       canonicalProfileUrl("https://www.linkedin.com/in/Sample-Avery-Lang/?miniProfileUrn=abc"),
       "linkedin.com/in/sample-avery-lang",
+    );
+    assert.equal(
+      cleanLinkedInUrl("https://www.linkedin.com/in/ada?miniProfileUrn=urn%3Afoo"),
+      "https://www.linkedin.com/in/ada",
     );
 
     const ranked = rankCandidates(

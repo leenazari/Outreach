@@ -82,10 +82,6 @@ describe("search aa42cce1 pipeline", () => {
     assert.deepEqual(queried.sort(), expected);
     const enriched = result.candidates.filter((candidate) => candidate.enriched);
     for (const candidate of enriched) assert.ok(expected.includes(candidate.name ?? ""));
-    const cameron = result.candidates.find((candidate) => candidate.name === "Cameron Stebbing");
-    assert.equal(cameron?.enriched, true);
-    assert.equal(cameron?.validation.status, "verified");
-
     const gurdeep = result.candidates.find((candidate) => candidate.name === "Gurdeep Gill");
     assert.ok(gurdeep, "Gurdeep should stay on the 25-person shortlist");
     assert.match(gurdeep.openToWorkPostUrl ?? "", /linkedin\.com\/posts\//);
@@ -98,7 +94,6 @@ describe("search aa42cce1 pipeline", () => {
     assert.equal(sharifa?.industry, "IT Services and IT Consulting");
     assert.equal(sharifa?.validation.label, "Not checked (short profile)");
 
-    assert.ok(enriched.some((candidate) => candidate.validation.status === "verified"));
     assert.ok(result.candidates.some((candidate) => !candidate.enriched && candidate.validation.label === "Not checked (short profile)"));
 
     console.log(

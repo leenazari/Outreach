@@ -41,6 +41,15 @@ export function canonicalName(name: string): string {
     .trim();
 }
 
+export function cleanLinkedInUrl(url: string | null): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  if (!/linkedin\.com/i.test(trimmed)) return trimmed;
+  const withoutQuery = trimmed.split(/[?#]/)[0] ?? trimmed;
+  return withoutQuery.replace(/\/+$/, "");
+}
+
 export function canonicalProfileUrl(url: string | null): string | null {
   if (!url) return null;
   const trimmed = url.trim();

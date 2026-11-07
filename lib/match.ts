@@ -91,33 +91,27 @@ function datedMonths(record: RawCandidate, now: Date): number {
 
 const NOT_ASSESSED = "not assessed";
 
-const INDUSTRY_FAMILIES: { id: string; label: string; pattern: RegExp }[] = [
-  { id: "software", label: "B2B software", pattern: /\b(b2b saas|saas|software|hr tech|fintech|devtools?)\b/i },
-  { id: "aviation", label: "aviation", pattern: /\b(commercial aviation|aviation|airline|airlines|aerospace|aircraft)\b/i },
-  { id: "healthcare", label: "healthcare", pattern: /\b(healthcare|hospital|clinical|pharma|pharmaceutical)\b/i },
-  { id: "finance", label: "financial services", pattern: /\b(investment bank|banking|insurance|hedge fund)\b/i },
-  { id: "retail", label: "retail", pattern: /\b(retail|e-commerce|ecommerce)\b/i },
-  { id: "energy", label: "energy", pattern: /\b(oil and gas|renewable energy)\b/i },
-  { id: "hospitality", label: "hospitality", pattern: /\b(hospitality|hotel chain)\b/i },
-  { id: "legal", label: "legal", pattern: /\b(law firm|legal services)\b/i },
-  { id: "realestate", label: "real estate", pattern: /\b(real estate|property development)\b/i },
-  { id: "manufacturing", label: "manufacturing", pattern: /\b(manufacturing|industrial equipment)\b/i },
-  { id: "recruitment", label: "recruitment", pattern: /\b(recruitment agency|staffing agency|executive search)\b/i },
+const SOFTWARE_SPEC = /\b(b2b saas|saas|software|hr tech|fintech)\b/i;
+const SOFTWARE_SIGNAL =
+  /\b(saas|software|computer software|financial software|software development|\bit services\b|\binternet\b|information technology|fintech|platform|cloud)\b/i;
+const INDUSTRY_CLASHES: { label: string; pattern: RegExp }[] = [
+  { label: "sport", pattern: /\b(football|soccer|football club|spectator sports|\bfc\b)\b/i },
+  { label: "events", pattern: /\b(events services|event venue|venues|exhibition)\b/i },
+  { label: "hospitality", pattern: /\b(hospitality|hotels?)\b/i },
+  { label: "consumer electronics", pattern: /\bconsumer electronics\b/i },
+  { label: "aviation", pattern: /\b(commercial aviation|aviation|airline|airlines|aerospace|aircraft)\b/i },
+  { label: "luxury retail", pattern: /\b(luxury retail|luxury goods|jewellery|jewelry)\b/i },
 ];
 
-function industryHits(text: string): { id: string; label: string }[] {
-  const hits: { id: string; label: string }[] = [];
-  for (const family of INDUSTRY_FAMILIES) {
-    if (family.pattern.test(text)) hits.push({ id: family.id, label: family.label });
-  }
-  return hits;
-}
+const SKILL_SYNONYMS: { keys: string[]; terms: string[] }[] = [
+  { keys: ["crm"], terms: ["crm", "salesforce", "hubspot", "pipedrive", "dynamics"] },
+  { keys: ["new business", "business development"], terms: ["new business", "business development", "hunter", "acquisition"] },
+  { keys: ["b2b saas", "saas", "software"], terms: ["saas", "software", "b2b", "platform", "cloud"] },
+  { keys: ["hr tech", "recruiting", "recruitment"], terms: ["hr tech", "recruiting", "recruitment", "talent acquisition", "applicant tracking"] },
+];
 
-function industryConflict(spec: ParsedSpec, record: RawCandidate): string | null {
-  const specText = [spec.jobTitle, ...spec.mustHave, ...spec.niceToHave].join("\n");
-  const wanted = industryHits(specText);
-  if (wanted.length === 0) return null;
-  const profileText = [
+function profileIndustryText(record: RawCandidate): string {
+  return [
     record.industry,
     record.company,
     ...(record.experience ?? []).flatMap((role) => [role.title, role.company, role.detail]),
@@ -125,12 +119,42 @@ function industryConflict(spec: ParsedSpec, record: RawCandidate): string | null
   ]
     .filter(Boolean)
     .join("\n");
-  const found = industryHits(profileText);
-  if (found.length === 0) return null;
-  if (found.some((hit) => wanted.some((item) => item.id === hit.id))) return null;
-  const specLabel = wanted.map((item) => item.label).join(", ");
-  const profileLabel = record.industry?.trim() || found.map((item) => item.label).join(", ");
-  return `Industry does not match the spec: ${profileLabel} is outside ${specLabel}.`;
+}
+
+function specWantsSoftware(spec: ParsedSpec): boolean {
+  return SOFTWARE_SPEC.test([spec.jobTitle, ...spec.mustHave, ...spec.niceToHave].join("\n"));
+}
+
+function industryConflict(spec: ParsedSpec, record: RawCandidate): string | null {
+  if (!specWantsSoftware(spec)) return null;
+  const profileText = profileIndustryText(record);
+  if (SOFTWARE_SIGNAL.test(profileText)) return null;
+  const clash = INDUSTRY_CLASHES.find((item) => item.pattern.test(profileText));
+  if (clash) {
+    const named = record.industry?.trim() || record.company?.trim() || clash.label;
+    return `Industry does not match the spec: ${named} is outside B2B software.`;
+  }
+  if (record.industry?.trim()) {
+    return `Industry does not match the spec: ${record.industry.trim()} is outside B2B software.`;
+  }
+  return null;
+}
+
+function requirementKeywords(phrase: string): string[] {
+  const withoutYears = phrase
+    .replace(/(?:at least\s+)?(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s*\+?\s*years?(?:\s+of)?/i, " ")
+    .replace(/\bexperience\b/gi, " ");
+  const normal = normaliseForMatch(withoutYears);
+  const terms = new Set<string>();
+  for (const group of SKILL_SYNONYMS) {
+    if (group.keys.some((key) => normal.includes(key))) {
+      for (const term of group.terms) terms.add(term);
+    }
+  }
+  if (terms.size === 0) {
+    for (const token of tokens(withoutYears)) terms.add(token);
+  }
+  return [...terms];
 }
 
 function notAssessed(key: MatchCriterionKey): MatchCriterion {
@@ -195,7 +219,10 @@ function skillsScore(spec: ParsedSpec, record: RawCandidate): MatchCriterion {
     };
   }
   if (record.detailOnRecord !== true) return notAssessed("skills");
-  const hits = phrases.filter((phrase) => haystackIncludes(record.haystack, phrase)).length;
+  const hits = phrases.filter((phrase) => {
+    const keywords = requirementKeywords(phrase);
+    return keywords.some((keyword) => haystackIncludes(record.haystack, keyword));
+  }).length;
   const score = Math.round((hits / phrases.length) * 100);
   return {
     key: "skills",
@@ -342,14 +369,13 @@ export function scoreMatch(
   // A title and a seniority word alone renormalise to a high percentage. Require
   // three assessed criteria before that percentage can outrank a fuller profile.
   if (assessed.length < 3) score = Math.min(score, HIGH_RISK_SCORE_CAP);
-  if (validation === "risk") score = Math.min(score, HIGH_RISK_SCORE_CAP);
-  if (record.enriched && industryConflict(spec, record)) score = Math.min(score, INDUSTRY_SCORE_CAP);
+  if (industryConflict(spec, record)) score = Math.min(score, INDUSTRY_SCORE_CAP);
   return {
     score,
     criteria,
-    unlockBlocked: validation === "risk",
-    blockedReason: validation === "risk" ? "High risk caps the match score." : null,
-    eligible: validation === "risk" ? false : unlockEligible(criteria),
+    unlockBlocked: false,
+    blockedReason: null,
+    eligible: unlockEligible(criteria),
   };
 }
 

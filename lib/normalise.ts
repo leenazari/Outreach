@@ -1,6 +1,6 @@
 import { collectLinkedInIds, originalQueryUrls, preferredProfileUrl, readCurrentCompany, readIndustry } from "./linkedin";
 import type { RawCandidate, SourceId } from "./types";
-import { asRecord, asString, clip, haystackIncludes, stripContactDetails } from "./text";
+import { asRecord, asString, cleanLinkedInUrl, clip, haystackIncludes, stripContactDetails } from "./text";
 import { readConnections, readWorkRoles } from "./work";
 
 function collectSkills(value: unknown): string[] {
@@ -150,9 +150,9 @@ export function normaliseLinkedInPost(item: unknown, watchPhrases: string[]): Ra
   const author = asRecord(record.author);
   const authorType = author ? asString(author.type) : "";
   const profileUrl =
-    (author ? asString(author.linkedinUrl) || asString(author.url) : "") ||
-    asString(record.authorProfileUrl) ||
-    "";
+    cleanLinkedInUrl(
+      (author ? asString(author.linkedinUrl) || asString(author.url) : "") || asString(record.authorProfileUrl) || "",
+    ) ?? "";
   if (authorType === "company" || profileUrl.includes("/company/")) return null;
   if (profileUrl && !profileUrl.includes("/in/") && authorType && authorType !== "profile") return null;
 

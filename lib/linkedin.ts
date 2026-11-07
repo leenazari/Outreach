@@ -1,4 +1,4 @@
-import { asRecord, asString } from "./text";
+import { asRecord, asString, cleanLinkedInUrl } from "./text";
 
 const ID_TOKEN = /\b(AC[ow][A-Za-z0-9_-]{5,})\b/g;
 
@@ -81,7 +81,7 @@ export function preferredProfileUrl(record: Record<string, unknown>): string | n
   if (publicIdentifier && !/^AC[ow]/i.test(publicIdentifier)) {
     return `https://www.linkedin.com/in/${publicIdentifier}`;
   }
-  const raw = asString(record.linkedinUrl) || asString(record.url) || asString(record.profileUrl);
+  const raw = cleanLinkedInUrl(asString(record.linkedinUrl) || asString(record.url) || asString(record.profileUrl)) ?? "";
   const slug = linkedInSlug(raw);
   if (slug && !/^AC[ow]/i.test(slug)) return `https://www.linkedin.com/in/${slug}`;
   if (raw && /linkedin\.com\/in\//i.test(raw)) return raw.split(/[?#]/)[0] ?? raw;
