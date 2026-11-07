@@ -1,7 +1,12 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { formatUsdAmount } from "@/lib/money";
-import type { SearchResponse, SourceId, ValidationStatus } from "@/lib/types";
+import { MATCH_OPEN_PERCENT, matchIsOpen } from "@/lib/rank";
+import type { Candidate, SearchResponse, SourceId, ValidationStatus } from "@/lib/types";
 import { SOURCE_LABELS } from "@/lib/types";
 
 const SOURCE_ORDER: SourceId[] = ["linkedin-profile", "linkedin-post", "indeed-resume"];
@@ -51,6 +56,7 @@ export function ResultList({
   result: SearchResponse | null;
   tokenConfigured: boolean;
 }) {
+  const [unlocked, setUnlocked] = useState<Record<string, boolean>>({});
   return (
     <section className="grid gap-4" aria-busy={status === "loading"} aria-live="polite">
       <PublicNotice />
@@ -85,12 +91,36 @@ export function ResultList({
         </p>
       ) : null}
 
-      {status === "ready" && result ? <Ready result={result} /> : null}
+      {status === "ready" && result ? (
+        <Ready
+          result={result}
+          unlocked={unlocked}
+          onUnlock={(id) => setUnlocked((current) => ({ ...current, [id]: true }))}
+          onUnlockAll={() =>
+            setUnlocked((current) => {
+              const next = { ...current };
+              for (const candidate of result.candidates) next[candidate.id] = true;
+              return next;
+            })
+          }
+        />
+      ) : null}
     </section>
   );
 }
 
-function Ready({ result }: { result: SearchResponse }) {
+function Ready({
+  result,
+  unlocked,
+  onUnlock,
+  onUnlockAll,
+}: {
+  result: SearchResponse;
+  unlocked: Record<string, boolean>;
+  onUnlock: (id: string) => void;
+  onUnlockAll: () => void;
+}) {
+  const lockedCount = result.candidates.filter((candidate) => !matchIsOpen(candidate.score) && !unlocked[candidate.id]).length;
   return (
     <div className="grid gap-4">
       {result.mode === "sample" ? (
@@ -110,6 +140,14 @@ function Ready({ result }: { result: SearchResponse }) {
         {result.stats.droppedForMustHave} dropped for a missing must-have · {result.stats.returned} ranked
         {result.spec.salaryLabel !== "Not specified" ? ` · Salary ${result.spec.salaryLabel} not scored` : ""}
       </p>
+      <p className="text-sm leading-6 text-muted-foreground">
+        A match of {MATCH_OPEN_PERCENT}% or higher is open. Anything lower stays locked until you unlock it.
+      </p>
+      {lockedCount > 0 ? (
+        <Button type="button" variant="outline" onClick={onUnlockAll}>
+          Unlock {lockedCount} below {MATCH_OPEN_PERCENT}%
+        </Button>
+      ) : null}
 
       <SearchCost result={result} />
 
@@ -141,86 +179,14 @@ function Ready({ result }: { result: SearchResponse }) {
       ) : (
         <ol className="grid gap-3">
           {result.candidates.map((candidate, index) => (
-            <li key={candidate.id} className="rounded-2xl border border-border bg-card p-4 sm:p-5">
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">
-                    {index + 1}
-                  </p>
-                  {candidate.profileUrl ? (
-                    <a
-                      href={candidate.profileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-serif text-2xl tracking-tight text-foreground underline decoration-[#c9ddd9] underline-offset-4 hover:decoration-primary"
-                    >
-                      {candidate.name}
-                    </a>
-                  ) : (
-                    <p className="font-serif text-2xl tracking-tight">{candidate.name}</p>
-                  )}
-                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                    {candidate.title}
-                    <span aria-hidden> · </span>
-                    {candidate.location}
-                  </p>
-                </div>
-                <p className="shrink-0 text-right">
-                  <span className="font-serif text-3xl tabular-nums tracking-tight">{candidate.score}</span>
-                  <span className="mt-1 block text-xs text-muted-foreground">out of 100</span>
-                </p>
-              </div>
-
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Badge className={VALIDATION_CLASS[candidate.validation.status]}>{candidate.validation.label}</Badge>
-                {candidate.sample ? (
-                  <Badge className="border-[#efd3ae] bg-[#fbf3e6] text-[#7a4510]">Sample data</Badge>
-                ) : null}
-                {candidate.sources.map((source) => (
-                  <Badge key={source} variant="outline">
-                    {SOURCE_LABELS[source]}
-                  </Badge>
-                ))}
-                {candidate.profileUrl ? null : <Badge variant="secondary">No public profile link</Badge>}
-              </div>
-
-              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-secondary" aria-hidden>
-                <div className="h-full rounded-full bg-primary" style={{ width: `${candidate.score}%` }} />
-              </div>
-
-              <p className="mt-3 text-sm leading-6">{candidate.snippet}</p>
-
-              <ul className="mt-3 grid gap-2">
-                {candidate.validation.reasons.map((reason) => (
-                  <li key={reason.summary} className="text-sm leading-6">
-                    <span className="font-medium">{reason.summary}</span>{" "}
-                    <span className="text-muted-foreground">{reason.evidence}</span>
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                Public data can only raise a flag. A person makes the final call.
-              </p>
-
-              <CandidateCost result={result} candidateId={candidate.id} />
-
-              <ul className="mt-3 grid gap-1">
-                {candidate.why.map((reason) => (
-                  <li key={reason.label} className="flex items-baseline justify-between gap-3 text-sm leading-6">
-                    <span>{reason.label}</span>
-                    <span className="shrink-0 tabular-nums text-muted-foreground">
-                      {reason.points > 0
-                        ? `+${reason.points}`
-                        : reason.points < 0
-                          ? reason.points
-                          : reason.label.startsWith("Must-have")
-                            ? "required"
-                            : "0"}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </li>
+            <CandidateCard
+              key={candidate.id}
+              candidate={candidate}
+              index={index}
+              result={result}
+              open={matchIsOpen(candidate.score) || unlocked[candidate.id] === true}
+              onUnlock={() => onUnlock(candidate.id)}
+            />
           ))}
         </ol>
       )}
@@ -254,6 +220,114 @@ function Ready({ result }: { result: SearchResponse }) {
         after that. Source order checked: {SOURCE_ORDER.map((source) => SOURCE_LABELS[source]).join(", ")}.
       </p>
     </div>
+  );
+}
+
+function CandidateCard({
+  candidate,
+  index,
+  result,
+  open,
+  onUnlock,
+}: {
+  candidate: Candidate;
+  index: number;
+  result: SearchResponse;
+  open: boolean;
+  onUnlock: () => void;
+}) {
+  return (
+    <li className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">{index + 1}</p>
+          {open && candidate.profileUrl ? (
+            <a
+              href={candidate.profileUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-serif text-2xl tracking-tight text-foreground underline decoration-[#c9ddd9] underline-offset-4 hover:decoration-primary"
+            >
+              {candidate.name}
+            </a>
+          ) : (
+            <p className="font-serif text-2xl tracking-tight">{open ? candidate.name : "Locked match"}</p>
+          )}
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            {open ? candidate.title : "Details stay hidden under 80%"}
+            {open ? (
+              <>
+                <span aria-hidden> · </span>
+                {candidate.location}
+              </>
+            ) : null}
+          </p>
+        </div>
+        <p className="shrink-0 text-right">
+          <span className="font-serif text-3xl tabular-nums tracking-tight">{candidate.score}%</span>
+          <span className="mt-1 block text-xs text-muted-foreground">{open ? "match" : "locked"}</span>
+        </p>
+      </div>
+
+      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-secondary" aria-hidden>
+        <div className="h-full rounded-full bg-primary" style={{ width: `${candidate.score}%` }} />
+      </div>
+
+      {open ? (
+        <>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Badge className={VALIDATION_CLASS[candidate.validation.status]}>{candidate.validation.label}</Badge>
+            {candidate.sample ? (
+              <Badge className="border-[#efd3ae] bg-[#fbf3e6] text-[#7a4510]">Sample data</Badge>
+            ) : null}
+            {candidate.sources.map((source) => (
+              <Badge key={source} variant="outline">
+                {SOURCE_LABELS[source]}
+              </Badge>
+            ))}
+            {candidate.profileUrl ? null : <Badge variant="secondary">No public profile link</Badge>}
+          </div>
+          <p className="mt-3 text-sm leading-6">{candidate.snippet}</p>
+          <ul className="mt-3 grid gap-2">
+            {candidate.validation.reasons.map((reason) => (
+              <li key={reason.summary} className="text-sm leading-6">
+                <span className="font-medium">{reason.summary}</span>{" "}
+                <span className="text-muted-foreground">{reason.evidence}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs leading-5 text-muted-foreground">
+            Public data can only raise a flag. A person makes the final call.
+          </p>
+          <CandidateCost result={result} candidateId={candidate.id} />
+          <ul className="mt-3 grid gap-1">
+            {candidate.why.map((reason) => (
+              <li key={reason.label} className="flex items-baseline justify-between gap-3 text-sm leading-6">
+                <span>{reason.label}</span>
+                <span className="shrink-0 tabular-nums text-muted-foreground">
+                  {reason.points > 0
+                    ? `+${reason.points}`
+                    : reason.points < 0
+                      ? reason.points
+                      : reason.label.startsWith("Must-have")
+                        ? "required"
+                        : "0"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm leading-6 text-muted-foreground">
+            This match is under {MATCH_OPEN_PERCENT}%. Unlock it to see the person, the profile check, and the Apify charge.
+          </p>
+          <Button type="button" variant="outline" onClick={onUnlock}>
+            Unlock
+          </Button>
+        </div>
+      )}
+    </li>
   );
 }
 

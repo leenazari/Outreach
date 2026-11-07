@@ -14,7 +14,7 @@ import { buildActorRunsUrl, type ActorRunner } from "./apify";
 import { MissingApifyTokenError, searchCandidates } from "./search";
 import { normaliseIndeedResume, normaliseLinkedInProfile } from "./normalise";
 import { parsePhraseList, parseSearchRequest } from "./parse";
-import { dedupeCandidates, rankCandidates } from "./rank";
+import { dedupeCandidates, matchIsOpen, rankCandidates } from "./rank";
 import type { ParsedSpec, RawCandidate } from "./types";
 import { canonicalProfileUrl } from "./text";
 
@@ -141,6 +141,8 @@ describe("ranking", () => {
       result.candidates.map((candidate) => candidate.validation.status),
       ["verified", "review", "review", "risk"],
     );
+    assert.equal(matchIsOpen(80), true);
+    assert.equal(matchIsOpen(79), false);
     assert.equal(result.spend.totalUsd, 0);
     assert.equal(result.spend.settled, true);
     assert.equal(result.stats.collected, 8);

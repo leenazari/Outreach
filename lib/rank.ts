@@ -8,6 +8,11 @@ export const NICE_TO_HAVE_CAP = 60;
 export const RECENT_JOB_POINTS = 15;
 export const WATCH_POST_POINTS = 15;
 export const CV_POINTS = 10;
+export const MATCH_OPEN_PERCENT = 80;
+
+export function matchIsOpen(score: number): boolean {
+  return score >= MATCH_OPEN_PERCENT;
+}
 export const VALIDATION_POINTS: Record<ValidationStatus, number> = {
   verified: 0,
   review: -8,

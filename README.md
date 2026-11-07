@@ -30,7 +30,7 @@ Signals, then the profile check:
 | Profile check: needs review | −8 |
 | Profile check: high risk | −20 |
 
-Salary is kept on the spec and shown in the summary. Public profiles rarely list pay, so it is not scored. The ranked list is at most 10 people.
+Salary is kept on the spec and shown in the summary. Public profiles rarely list pay, so it is not scored. The ranked list is at most 10 people. The score is shown as a match percentage. A match of 80% or higher is open. Lower matches stay locked until you unlock that person, or unlock everyone under 80%.
 
 You can speak the spec. A microphone button uses the browser Web Speech API (`en-GB`) and shows the live transcript. The recording is sent to `POST /api/parse-spec`, which fills the form for review. It does not start a search. While the mic is listening, “pause” or “pause bot” stops adding words and shows **Paused**. “continue”, “unpause”, or “unpause bot” resumes. Those words are never written into the spec. If `OPENAI_API_KEY` is set, `gpt-4o-mini` extracts the fields as JSON. If it is missing, or the model call fails, a built-in parser reads salaries, UK city names, and phrases after “must have”, “needs”, “essential”, “nice to have”, “ideally”, and “bonus”. That fallback does not switch the search into sample mode.
 
