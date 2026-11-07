@@ -111,7 +111,9 @@ export function buildActorPlans(spec: ParsedSpec): ActorPlan[] {
       skipped: false,
       input: {
         profileScraperMode: "Short",
-        searchQuery: buildProfileSearchQuery(spec),
+        searchQuery: spec.searchTitle?.trim()
+          ? spec.searchTitle.replace(/\s+/g, " ").trim().slice(0, SEARCH_QUERY_MAX)
+          : buildProfileSearchQuery(spec),
         maxItems: spec.openToWork === true ? PROFILE_PAGE_ITEMS : PROFILE_MAX_ITEMS,
         ...(spec.location ? { locations: [spec.location] } : {}),
         currentJobTitles: [shortJobTitle(spec.jobTitle)],

@@ -81,7 +81,7 @@ After the short-profile search, up to 25 people who are not outside the commute 
 }
 ```
 
-You can dictate the spec. **Start recording** uses the browser Web Speech API (`en-GB`) and shows a recording indicator with the live words. **Stop recording** puts that transcript into the job spec box, where it can be edited. It does not start a search. On Android the recogniser runs one utterance at a time and restarts while recording is still on, and cumulative interim results replace the previous interim instead of being appended. If `OPENAI_API_KEY` is set, `gpt-4o-mini` extracts the fields as JSON when the search runs. If it is missing, or the model call fails, a built-in parser reads salaries, UK city names, and phrases after “must have”, “needs”, “essential”, “nice to have”, “ideally”, and “bonus”. That fallback does not switch the search into sample mode.
+You can dictate the spec. **Start recording** uses the browser Web Speech API (`en-GB`) and shows a recording indicator with the live words. **Stop recording** puts that transcript into the job spec box, where it can be edited. It does not start a search. After typing pauses, a paste, or Stop recording, the form is filled by `google/gemini-2.5-flash-lite` through AI Gateway. The regex parser is used only if that call fails. Token cost for that read is listed on `/spend`. On Android the recogniser runs one utterance at a time and restarts while recording is still on, and cumulative interim results replace the previous interim instead of being appended. If the form fields are still empty when Search is pressed, the built-in parser fills the gaps. That does not switch the search into sample mode.
 
 ## Live only
 

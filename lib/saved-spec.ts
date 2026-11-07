@@ -25,6 +25,7 @@ export function readStoredRequest(value: unknown): SearchRequest | null {
     yearsExperience: asString(record.yearsExperience),
     industry: asString(record.industry),
     workplace: asString(record.workplace),
+    searchTitle: asString(record.searchTitle),
     watchPhrases: asString(record.watchPhrases),
     useSampleData: false,
     includeIndeed: record.includeIndeed === true,

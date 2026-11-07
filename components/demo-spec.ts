@@ -13,6 +13,7 @@ export const EMPTY_REQUEST: SearchRequest = {
   yearsExperience: "",
   industry: "",
   workplace: "",
+  searchTitle: "",
   watchPhrases: "",
   useSampleData: false,
   includeIndeed: false,

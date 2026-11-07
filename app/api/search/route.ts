@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { parsePhraseList, parseSearchRequest } from "@/lib/parse";
-import { extractTitle, interpretTranscript } from "@/lib/parse-speech";
+import { extractTitle, parseSpokenSpecRules } from "@/lib/parse-speech";
 import { MissingApifyTokenError, searchCandidates } from "@/lib/search";
 import { readStoredRequest } from "@/lib/saved-spec";
 import type { ParsedSpec } from "@/lib/types";
@@ -41,13 +41,7 @@ export async function POST(request: Request) {
 
   let spec: ParsedSpec;
   if (specText) {
-    let spoken;
-    try {
-      spoken = await interpretTranscript(specText, process.env.OPENAI_API_KEY);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "The job spec could not be parsed.";
-      return NextResponse.json({ error: publicError(message) }, { status: 502 });
-    }
+    const spoken = parseSpokenSpecRules(specText);
     const edited = (key: string) => (record ? asString(record[key]) : "");
     const locked = new Set(
       Array.isArray(record?.lockedFields) ? record.lockedFields.filter((item): item is string => typeof item === "string") : [],
@@ -65,6 +59,7 @@ export async function POST(request: Request) {
       yearsExperience: pick("yearsExperience", spoken.yearsExperience),
       industry: pick("industry", spoken.industry),
       workplace: pick("workplace", spoken.workplace),
+      searchTitle: pick("searchTitle", ""),
       watchPhrases: parsePhraseList(record ? asString(record.watchPhrases) : "", 3),
       specText,
       useSampleData: false,

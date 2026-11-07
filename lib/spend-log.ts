@@ -4,7 +4,9 @@ import {
   getActorRun,
   getDatasetItemsForRun,
   listActorRuns,
+  listParseSpends,
   listSearchGroups,
+  type ParseSpendRecord,
   type SearchGroupRecord,
 } from "./apify";
 import type { ActorRunSnapshot } from "./charge";
@@ -276,6 +278,49 @@ export async function loadSpendLog(token: string | undefined, now = new Date()):
       if (today && parts?.day === today.day) todayMicros += micros;
       if (today && parts?.month === today.month) monthMicros += micros;
     }
+    const parses = await listParseSpends(trimmed).catch(() => [] as ParseSpendRecord[]);
+    for (const parse of parses) {
+      if (parse.usd <= 0) continue;
+      const micros = usdToMicros(parse.usd);
+      settled += micros;
+      const parts = parse.startedAt ? londonParts(parse.startedAt) : null;
+      if (today && parts?.day === today.day) todayMicros += micros;
+      if (today && parts?.month === today.month) monthMicros += micros;
+      searches.push({
+        searchId: parse.id,
+        jobTitle: parse.jobTitle ? `Spec reading: ${parse.jobTitle}` : "Spec reading",
+        location: "",
+        startedAt: parse.startedAt,
+        totalUsd: parse.usd,
+        settlingUsd: 0,
+        settled: true,
+        unassignedUsd: 0,
+        runs: [
+          {
+            actor: "ai-gateway",
+            label: "Spec reading",
+            runId: null,
+            status: "SUCCEEDED",
+            startedAt: parse.startedAt,
+            settled: true,
+            totalUsd: parse.usd,
+            lines: [
+              {
+                label: `${parse.model}: ${parse.inputTokens} input tokens, ${parse.outputTokens} output tokens`,
+                usd: parse.usd,
+                kind: "event",
+                allocated: false,
+              },
+            ],
+            consoleUrl: null,
+            note: "Token cost for reading the job spec into the form.",
+          },
+        ],
+        candidates: [],
+        note: "Token cost for reading the job spec into the form.",
+      });
+    }
+    searches.sort((left, right) => (right.startedAt || "").localeCompare(left.startedAt || ""));
 
     return {
       configured: true,

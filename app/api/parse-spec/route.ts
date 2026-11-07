@@ -1,5 +1,7 @@
+import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
-import { interpretTranscript } from "@/lib/parse-speech";
+import { saveParseSpend } from "@/lib/apify";
+import { extractSpec } from "@/lib/extract-spec";
 
 export const maxDuration = 30;
 
@@ -33,6 +35,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "That recording is too long to parse." }, { status: 400 });
   }
 
-  const parsed = await interpretTranscript(transcript, process.env.OPENAI_API_KEY);
-  return NextResponse.json(parsed);
+  const extracted = await extractSpec(transcript);
+  const token = process.env.APIFY_TOKEN?.trim() ?? "";
+  if (token && extracted.usage && extracted.usage.usd > 0) {
+    try {
+      await saveParseSpend(token, {
+        id: randomUUID(),
+        startedAt: new Date().toISOString(),
+        model: extracted.usage.model,
+        inputTokens: extracted.usage.inputTokens,
+        outputTokens: extracted.usage.outputTokens,
+        usd: extracted.usage.usd,
+        jobTitle: extracted.fields.jobTitle,
+      });
+    } catch {
+      // The form can still fill when the spend record cannot be stored.
+    }
+  }
+  return NextResponse.json(extracted.fields);
 }

@@ -25,6 +25,7 @@ export type SearchRequest = {
   yearsExperience: string;
   industry: string;
   workplace: string;
+  searchTitle: string;
   watchPhrases: string;
   useSampleData: boolean;
   includeIndeed: boolean;
@@ -46,6 +47,7 @@ export type ParsedSpec = {
   yearsExperience?: string;
   industry?: string;
   workplace?: string;
+  searchTitle?: string;
   watchPhrases: string[];
   useSampleData: boolean;
   includeIndeed?: boolean;

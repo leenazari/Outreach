@@ -12,6 +12,7 @@ export const PARSED_FIELDS = [
   "yearsExperience",
   "industry",
   "workplace",
+  "searchTitle",
 ] as const;
 
 export type ParsedField = (typeof PARSED_FIELDS)[number];

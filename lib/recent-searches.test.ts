@@ -17,6 +17,7 @@ const request: SearchRequest = {
   yearsExperience: "",
   industry: "",
   workplace: "",
+  searchTitle: "marketing executive",
   watchPhrases: "",
   useSampleData: false,
   includeIndeed: false,

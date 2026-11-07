@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { VoiceSpec } from "@/components/voice-spec";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +45,8 @@ export function SpecForm({ value, loading, revision, onChange, onSubmit, onRerun
   const valueRef = useRef(value);
   valueRef.current = value;
   const touched = useRef(new Set<string>());
+  const immediate = useRef(false);
+  const [reading, setReading] = useState(false);
 
   function update<K extends keyof SearchRequest>(key: K, next: SearchRequest[K]) {
     onChange({ ...valueRef.current, [key]: next });
@@ -61,8 +63,14 @@ export function SpecForm({ value, loading, revision, onChange, onSubmit, onRerun
 
   useEffect(() => {
     const text = value.specText.trim();
-    if (text.length < 12) return;
+    if (text.length < 12) {
+      setReading(false);
+      return;
+    }
+    const delay = immediate.current ? 0 : 800;
+    immediate.current = false;
     const handle = window.setTimeout(() => {
+      setReading(true);
       void fetch("/api/parse-spec", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -76,8 +84,11 @@ export function SpecForm({ value, loading, revision, onChange, onSubmit, onRerun
           if (!parsed || valueRef.current.specText.trim() !== text) return;
           onChange(applyParsedSpec(valueRef.current, parsed, touched.current));
         })
-        .catch(() => undefined);
-    }, 400);
+        .catch(() => undefined)
+        .finally(() => {
+          if (valueRef.current.specText.trim() === text) setReading(false);
+        });
+    }, delay);
     return () => window.clearTimeout(handle);
   }, [onChange, value.specText]);
 
@@ -92,7 +103,10 @@ export function SpecForm({ value, loading, revision, onChange, onSubmit, onRerun
     >
       <VoiceSpec
         disabled={loading}
-        onUseText={(text) => update("specText", text)}
+        onUseText={(text) => {
+          immediate.current = true;
+          update("specText", text);
+        }}
       />
       <div className="grid gap-2">
         <Label htmlFor="specText">Job spec</Label>
@@ -103,8 +117,12 @@ export function SpecForm({ value, loading, revision, onChange, onSubmit, onRerun
           rows={8}
           value={value.specText}
           placeholder="Paste or type a job spec. For example: Sales Executive in London, £40,000 to £50,000, must have 2 years of B2B sales and a full UK driving licence."
+          onPaste={() => {
+            immediate.current = true;
+          }}
           onChange={(event) => update("specText", event.target.value)}
         />
+        {reading ? <p className="text-sm text-muted-foreground">Reading your spec...</p> : null}
         <FieldHint>
           The full text is kept for scoring. LinkedIn is searched with a short title and the location field. Fields
           below fill in from this text and stay editable.
@@ -150,6 +168,10 @@ export function SpecForm({ value, loading, revision, onChange, onSubmit, onRerun
               </option>
             ))}
           </select>
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="searchTitle">LinkedIn search</Label>
+          <Input id="searchTitle" value={value.searchTitle} onChange={(event) => edit("searchTitle", event.target.value)} />
         </div>
         <div className="grid gap-2">
           <Label htmlFor="workplace">Remote / hybrid</Label>

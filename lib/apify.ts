@@ -182,6 +182,52 @@ export async function getStoreRecord(token: string, key: string): Promise<unknow
   return response.json();
 }
 
+export type ParseSpendRecord = {
+  id: string;
+  startedAt: string;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  usd: number;
+  jobTitle: string;
+};
+
+export async function saveParseSpend(token: string, record: ParseSpendRecord): Promise<void> {
+  await putStoreRecord(token, `parse-${record.id}`, record);
+}
+
+export async function listParseSpends(token: string): Promise<ParseSpendRecord[]> {
+  const keysResponse = await apifyFetch(
+    token,
+    `https://api.apify.com/v2/key-value-stores/${SEARCH_STORE}/keys?limit=100`,
+    { signal: AbortSignal.timeout(15_000) },
+  );
+  if (!keysResponse.ok) return [];
+  const payload: unknown = await keysResponse.json();
+  const items = asRecord(asRecord(payload)?.data)?.items;
+  if (!Array.isArray(items)) return [];
+  const keys = items
+    .map((item) => asString(asRecord(item)?.key))
+    .filter((key) => key.startsWith("parse-"));
+  const spends: ParseSpendRecord[] = [];
+  for (const key of keys) {
+    const stored = asRecord(await getStoreRecord(token, key));
+    if (!stored) continue;
+    const usd = typeof stored.usd === "number" ? stored.usd : Number(stored.usd);
+    if (!Number.isFinite(usd)) continue;
+    spends.push({
+      id: asString(stored.id) || key.slice("parse-".length),
+      startedAt: asString(stored.startedAt),
+      model: asString(stored.model),
+      inputTokens: Number(stored.inputTokens) || 0,
+      outputTokens: Number(stored.outputTokens) || 0,
+      usd,
+      jobTitle: asString(stored.jobTitle),
+    });
+  }
+  return spends;
+}
+
 export async function saveSearchGroup(token: string, group: SearchGroupRecord): Promise<void> {
   await ensureSearchStore(token);
   await apifyFetch(token, `https://api.apify.com/v2/key-value-stores/${SEARCH_STORE}/records/search-${group.searchId}`, {
