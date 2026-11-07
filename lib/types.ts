@@ -51,6 +51,7 @@ export type ParsedSpec = {
   includeIndeed?: boolean;
   recentlyChangedJobs?: boolean;
   openToWork?: boolean;
+  specText?: string;
 };
 
 export type ScoreReason = {
@@ -68,6 +69,7 @@ export type WorkRole = {
   end: string | null;
   detail: string;
   source: WorkSource;
+  industry?: string;
 };
 
 export type RecordOrigin = {
@@ -128,6 +130,15 @@ export type CandidateSpend = {
   lines: CandidateCostLine[];
 };
 
+export type LlmSpend = {
+  model: string;
+  calls: number;
+  failed: number;
+  inputTokens: number;
+  outputTokens: number;
+  usd: number;
+};
+
 export type SearchSpend = {
   mode: "sample" | "live";
   searchId: string | null;
@@ -138,6 +149,7 @@ export type SearchSpend = {
   runs: RunSpend[];
   candidates: CandidateSpend[];
   note: string;
+  llm?: LlmSpend | null;
 };
 
 export type MatchCriterionKey = "title" | "skills" | "experience" | "location" | "seniority" | "recency";
@@ -184,6 +196,19 @@ export type Candidate = {
   firstPassScore: number;
   enriched: boolean;
   industry: string | null;
+  scoreSource: "ai" | "heuristic";
+  matchReason: string;
+  matchedSkills: string[];
+  missingSkills: string[];
+  locationStatus: "match" | "unknown";
+  aiScores?: {
+    relevantExperienceYears: number;
+    roleRelevance: number;
+    industrySimilarity: number;
+    seniorityFit: number;
+    skillsMatch: number;
+    locationFit: number;
+  } | null;
 };
 
 export type SourceNotice = {
@@ -203,6 +228,7 @@ export type SearchStats = {
   collected: number;
   afterDedupe: number;
   droppedForMustHave: number;
+  excludedForLocation: number;
   matched: number;
   returned: number;
 };
@@ -254,4 +280,7 @@ export type RawCandidate = {
   openToWork?: boolean;
   openToWorkPostUrl?: string | null;
   firstPassScore?: number;
+  skills?: string[];
+  about?: string;
+  headline?: string;
 };

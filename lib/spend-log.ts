@@ -136,13 +136,41 @@ function groupSpend(searchId: string | null, meta: SearchGroupRecord | null, inp
     jobTitle: meta?.jobTitle || "Apify run",
     location: meta?.location || "",
     startedAt,
-    totalUsd: spend.totalUsd,
+    totalUsd: llmTotal(spend.totalUsd, meta?.llm?.usd ?? 0),
     settlingUsd: spend.settlingUsd,
     settled: spend.settled,
     unassignedUsd: spend.unassignedUsd,
-    runs: spend.runs,
+    runs: meta?.llm ? [...spend.runs, llmRun(meta.llm)] : spend.runs,
     candidates: spend.candidates,
     note: spend.note,
+  };
+}
+
+function llmTotal(apifyUsd: number | null, llmUsd: number): number | null {
+  if (apifyUsd === null) return llmUsd > 0 ? llmUsd : null;
+  return Math.round((apifyUsd + llmUsd) * 1_000_000) / 1_000_000;
+}
+
+function llmRun(llm: NonNullable<SearchGroupRecord["llm"]>): RunSpend {
+  return {
+    actor: "ai-gateway",
+    label: "AI match",
+    runId: null,
+    status: "SUCCEEDED",
+    startedAt: null,
+    settled: true,
+    totalUsd: llm.usd,
+    lines: [
+      {
+        label: `${llm.model}: ${llm.inputTokens} input tokens, ${llm.outputTokens} output tokens, ${llm.calls} calls`,
+        usd: llm.usd,
+        kind: "event",
+        allocated: false,
+        count: llm.calls,
+      },
+    ],
+    consoleUrl: null,
+    note: "Token cost for the AI match on this search.",
   };
 }
 
@@ -238,6 +266,15 @@ export async function loadSpendLog(token: string | undefined, now = new Date()):
         if (today && parts?.day === today.day) todayMicros += charge.totalMicros;
         if (today && parts?.month === today.month) monthMicros += charge.totalMicros;
       }
+    }
+    for (const meta of groups) {
+      const llmUsd = meta.llm?.usd ?? 0;
+      if (llmUsd <= 0) continue;
+      const micros = usdToMicros(llmUsd);
+      settled += micros;
+      const parts = meta.startedAt ? londonParts(meta.startedAt) : null;
+      if (today && parts?.day === today.day) todayMicros += micros;
+      if (today && parts?.month === today.month) monthMicros += micros;
     }
 
     return {

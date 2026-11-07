@@ -1,9 +1,12 @@
+import { PROFILE_MAX_ITEMS, PROFILE_PAGE_ITEMS } from "./actors";
+
 export const PROFILE_PAGE_USD = 0.1;
 export const ENRICH_PROFILE_USD = 0.004;
 export const POST_USD = 0.002;
 export const EMAIL_PROFILE_USD = 0.01;
 export const INDEED_ESTIMATE_USD = 0.16;
-export const DEFAULT_ENRICH_TOP_N = 10;
+export const DEFAULT_ENRICH_TOP_N = 25;
+export const AI_MATCH_ESTIMATE_USD = 0.02;
 export const OPEN_TO_WORK_POSTS = 15;
 export const WATCH_POSTS = 5;
 
@@ -19,10 +22,11 @@ export function estimateSearchCost(input: {
   watchPhrases: boolean;
   enrichTopN?: number;
 }): { totalUsd: number; lines: CostEstimateLine[] } {
-  const enrichCount = input.enrichTopN ?? DEFAULT_ENRICH_TOP_N;
+  const enrichCount = input.enrichTopN ?? (input.openToWork ? PROFILE_PAGE_ITEMS : PROFILE_MAX_ITEMS);
   const lines: CostEstimateLine[] = [
     { label: "LinkedIn profile page", usd: PROFILE_PAGE_USD },
     { label: `${enrichCount} full profiles`, usd: roundUsd(enrichCount * ENRICH_PROFILE_USD) },
+    { label: "AI match, up to", usd: AI_MATCH_ESTIMATE_USD },
   ];
   if (input.openToWork) {
     lines.push({ label: `${OPEN_TO_WORK_POSTS} open-to-work posts`, usd: roundUsd(OPEN_TO_WORK_POSTS * POST_USD) });

@@ -5,10 +5,9 @@ import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import { ENRICH_ACTOR, POST_ACTOR, PROFILE_ACTOR } from "./actors";
 import type { ActorRunner } from "./apify";
-import { selectEnrichmentTargets } from "./enrich";
+import { profilesToEnrich } from "./enrich";
 import { normaliseLinkedInPost, normaliseLinkedInProfile } from "./normalise";
 import { parseSpokenSpecRules } from "./parse-speech";
-import { rankCandidates } from "./rank";
 import { searchCandidates } from "./search";
 import { linkedInMemberKey } from "./linkedin";
 import { canonicalProfileUrl } from "./text";
@@ -65,23 +64,23 @@ describe("search aa42cce1 pipeline", () => {
 
     assert.ok(result.candidates.length > 10);
     assert.ok(result.candidates.length <= 25);
-    for (let index = 1; index < result.candidates.length; index += 1) {
-      assert.ok((result.candidates[index - 1]?.score ?? 0) >= (result.candidates[index]?.score ?? 0));
+    const known = result.candidates.filter((candidate) => candidate.locationStatus !== "unknown");
+    const unknown = result.candidates.filter((candidate) => candidate.locationStatus === "unknown");
+    assert.deepEqual(result.candidates, [...known, ...unknown]);
+    for (const group of [known, unknown]) {
+      for (let index = 1; index < group.length; index += 1) {
+        assert.ok((group[index - 1]?.score ?? 0) >= (group[index]?.score ?? 0));
+      }
     }
 
     const pool = [
       ...shortItems.map((item) => normaliseLinkedInProfile(item)).filter((item): item is RawCandidate => item !== null),
       ...postItems.map((item) => normaliseLinkedInPost(item, [])).filter((item): item is RawCandidate => item !== null),
     ];
-    const firstPass = rankCandidates(pool, { ...salesSpec(), openToWork: false }, { limit: pool.length });
-    const expected = selectEnrichmentTargets(firstPass.candidates, 10).map((candidate) => candidate.name).sort();
-    const queried = enrichQueries.map((url) => {
-      const key = canonicalProfileUrl(url);
-      return pool.find((person) => canonicalProfileUrl(person.profileUrl) === key)?.name ?? url;
-    });
-    assert.deepEqual(queried.sort(), expected);
-    const enriched = result.candidates.filter((candidate) => candidate.enriched);
-    for (const candidate of enriched) assert.ok(expected.includes(candidate.name ?? ""));
+    assert.deepEqual(
+      enrichQueries.map((url) => canonicalProfileUrl(url)).sort(),
+      profilesToEnrich(pool, salesSpec(), 25).map((url) => canonicalProfileUrl(url)).sort(),
+    );
     const gurdeep = result.candidates.find((candidate) => candidate.name === "Gurdeep Gill");
     assert.ok(gurdeep, "Gurdeep should stay on the 25-person shortlist");
     assert.match(gurdeep.openToWorkPostUrl ?? "", /linkedin\.com\/posts\//);

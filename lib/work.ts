@@ -85,6 +85,11 @@ export function readWorkRoles(
       const current = entry.current === true || /present|current/i.test(asString(entry.endDateText));
       const start = parseYearMonth(entry.startDate ?? entry.startedOn ?? entry.start ?? entry.dateFrom, "start");
       const end = current ? null : parseYearMonth(entry.endDate ?? entry.endedOn ?? entry.end ?? entry.dateTo, "end");
+      const companyRecord = asRecord(entry.company);
+      const industry =
+        asString(entry.industry) ||
+        asString(companyRecord?.industry) ||
+        asString(asRecord(entry.companyIndustry)?.name);
       const detail = clip(asString(entry.description) || asString(entry.summary), 240);
       if (!title && !company) continue;
       const key = `${title}|${company}|${start ?? ""}|${end ?? ""}`.toLowerCase();
@@ -98,6 +103,7 @@ export function readWorkRoles(
         end,
         detail,
         source,
+        ...(industry ? { industry } : {}),
       });
     }
   }

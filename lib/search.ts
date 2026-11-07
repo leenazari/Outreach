@@ -13,14 +13,16 @@ import {
 import { buildSearchSpend, sampleSpend, type SpendRunInput } from "./attribute";
 import { createApifyRunner, putStoreRecord, saveSearchGroup, SourceFailure, type ActorRunner, type ActorRunResult } from "./apify";
 import type { ActorRunSnapshot } from "./charge";
-import { applyEnrichment, enrichmentQuery, selectEnrichmentTargets } from "./enrich";
+import { aiGatewayConfigured, createGatewayJudge, scoreCandidatesWithAi } from "./ai-match";
+import { applyEnrichment, profilesToEnrich } from "./enrich";
 import { normaliseIndeedResume, normaliseLinkedInPost, normaliseLinkedInProfile } from "./normalise";
 import { salaryLabel } from "./parse";
 import { buildExport, EXPORT_RECORD_KEY, postInterviewaWebhook } from "./interviewa";
 import { candidateKey, rankCandidates } from "./rank";
 import { buildSampleCandidates } from "./sample";
 import { canonicalName } from "./text";
-import type { ParsedSpec, RawCandidate, SearchResponse, SourceId, SourceNotice, WorkRole } from "./types";
+import type { CandidateJudge } from "./ai-match";
+import type { LlmSpend, ParsedSpec, RawCandidate, SearchResponse, SourceId, SourceNotice, WorkRole } from "./types";
 
 const SOURCE_BY_ACTOR: Record<string, SourceId> = {
   [PROFILE_ACTOR]: "linkedin-profile",
@@ -98,6 +100,7 @@ function responseFor(
       collected: raw.length,
       afterDedupe: ranked.afterDedupe,
       droppedForMustHave: ranked.droppedForMustHave,
+      excludedForLocation: ranked.excludedForLocation,
       matched: ranked.matched,
       returned: ranked.candidates.length,
     },
@@ -160,6 +163,8 @@ export async function searchCandidates(
     demo?: boolean;
     includeEmail?: boolean;
     enrichTopN?: number;
+    aiMatch?: boolean;
+    judge?: CandidateJudge;
   },
 ): Promise<SearchResponse> {
   const token = options.token?.trim() ?? "";
@@ -253,7 +258,6 @@ export async function searchCandidates(
 
   await Promise.all(jobs);
 
-  const enrichLimit = Math.min(25, Math.max(1, options.enrichTopN ?? 10));
   const preview = rankCandidates(raw, { ...spec, openToWork: false }, {
     limit: Math.max(raw.length, 1),
   });
@@ -264,15 +268,13 @@ export async function searchCandidates(
       if (sameId || sameName) record.firstPassScore = candidate.score;
     }
   }
-  const urls = selectEnrichmentTargets(preview.candidates, enrichLimit)
-    .map((candidate) => enrichmentQuery(candidate))
-    .filter((url): url is string => Boolean(url));
+  const urls = profilesToEnrich(raw, spec, 25);
   const remaining = SEARCH_BUDGET_MS - (Date.now() - budgetStart);
   if (urls.length === 0) {
     notices.push({
       source: "apify",
       level: "info",
-      message: "No LinkedIn profile scored 50 or higher, so the full-profile call was not made.",
+      message: "No LinkedIn profile was left inside the location, so the full-profile call was not made.",
     });
   } else if (remaining < 20_000) {
     notices.push({
@@ -331,6 +333,46 @@ export async function searchCandidates(
     }
   }
 
+  const result = responseFor(spec, "live", tokenConfigured, raw, notices, runs, searchId);
+  let llm: LlmSpend | null = null;
+  const wantsAi = options.aiMatch === true;
+  if (wantsAi && result.candidates.length > 0 && SEARCH_BUDGET_MS - (Date.now() - budgetStart) > 15_000) {
+    const judge = options.judge ?? (aiGatewayConfigured() ? createGatewayJudge() : null);
+    if (!judge) {
+      for (const candidate of result.candidates) {
+        candidate.scoreSource = "heuristic";
+        candidate.matchReason = "Heuristic score (AI match unavailable)";
+      }
+      result.notices.push({
+        source: "apify",
+        level: "info",
+        message: "AI match was skipped because Vercel AI Gateway is not configured. Scores use the heuristic.",
+      });
+    } else {
+      try {
+        llm = await scoreCandidatesWithAi(result.candidates, raw, spec, { judge });
+        attachLlmSpend(result, llm);
+        if (llm.failed > 0) {
+          result.notices.push({
+            source: "apify",
+            level: "warning",
+            message: `AI match failed for ${llm.failed} of ${llm.calls} profiles. Those cards use the heuristic score.`,
+          });
+        }
+      } catch (error) {
+        for (const candidate of result.candidates) {
+          candidate.scoreSource = "heuristic";
+          candidate.matchReason = "Heuristic score (AI match failed)";
+        }
+        result.notices.push({
+          source: "apify",
+          level: "warning",
+          message: `AI match failed: ${describeActorError(error)} Scores use the heuristic.`,
+        });
+      }
+    }
+  }
+
   const runIds = runs.map((run) => run.run?.id).filter((id): id is string => Boolean(id));
   if (usingLiveClient && runIds.length > 0) {
     try {
@@ -340,17 +382,16 @@ export async function searchCandidates(
         jobTitle: spec.jobTitle,
         location: spec.location,
         runIds,
+        llm,
       });
     } catch {
-      notices.push({
+      result.notices.push({
         source: "apify",
         level: "info",
         message: "The runs were charged, but this search could not be grouped on the spend log. Each run is still listed there.",
       });
     }
   }
-
-  const result = responseFor(spec, "live", tokenConfigured, raw, notices, runs, searchId);
   if (usingLiveClient) {
     const payload = buildExport({
       candidates: result.candidates,
@@ -379,6 +420,33 @@ export async function searchCandidates(
     }
   }
   return result;
+}
+
+function attachLlmSpend(result: SearchResponse, llm: LlmSpend): void {
+  result.spend.llm = llm;
+  result.spend.runs.push({
+    actor: "ai-gateway",
+    label: "AI match",
+    runId: null,
+    status: "SUCCEEDED",
+    startedAt: new Date().toISOString(),
+    settled: true,
+    totalUsd: llm.usd,
+    lines: [
+      {
+        label: `${llm.model}: ${llm.inputTokens} input tokens, ${llm.outputTokens} output tokens`,
+        usd: llm.usd,
+        kind: "event",
+        allocated: false,
+        count: llm.calls,
+      },
+    ],
+    consoleUrl: null,
+    note: `${llm.calls} profile${llm.calls === 1 ? "" : "s"} scored. ${llm.failed} failed and kept the heuristic.`,
+  });
+  if (typeof result.spend.totalUsd === "number") {
+    result.spend.totalUsd = Math.round((result.spend.totalUsd + llm.usd) * 1_000_000) / 1_000_000;
+  }
 }
 
 export function spendActorLabel(actor: string): string {

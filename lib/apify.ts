@@ -144,6 +144,14 @@ export type SearchGroupRecord = {
   jobTitle: string;
   location: string;
   runIds: string[];
+  llm?: {
+    model: string;
+    calls: number;
+    failed: number;
+    inputTokens: number;
+    outputTokens: number;
+    usd: number;
+  } | null;
 };
 
 async function ensureSearchStore(token: string): Promise<void> {
@@ -182,9 +190,25 @@ export async function saveSearchGroup(token: string, group: SearchGroupRecord): 
       jobTitle: group.jobTitle,
       location: group.location,
       runIds: group.runIds,
+      llm: group.llm ?? null,
     }),
     signal: AbortSignal.timeout(15_000),
   });
+}
+
+function readLlm(value: unknown): SearchGroupRecord["llm"] {
+  const record = asRecord(value);
+  if (!record) return null;
+  const usd = typeof record.usd === "number" ? record.usd : Number(record.usd);
+  if (!Number.isFinite(usd)) return null;
+  return {
+    model: asString(record.model),
+    calls: Number(record.calls) || 0,
+    failed: Number(record.failed) || 0,
+    inputTokens: Number(record.inputTokens) || 0,
+    outputTokens: Number(record.outputTokens) || 0,
+    usd,
+  };
 }
 
 export async function listSearchGroups(token: string): Promise<SearchGroupRecord[]> {
@@ -216,6 +240,7 @@ export async function listSearchGroups(token: string): Promise<SearchGroupRecord
       jobTitle: asString(record?.jobTitle),
       location: asString(record?.location),
       runIds,
+      llm: readLlm(record?.llm),
     });
   }
   return groups;

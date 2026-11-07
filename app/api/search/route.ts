@@ -65,6 +65,7 @@ export async function POST(request: Request) {
       industry: pick("industry", spoken.industry),
       workplace: pick("workplace", spoken.workplace),
       watchPhrases: parsePhraseList(record ? asString(record.watchPhrases) : "", 3),
+      specText,
       useSampleData: false,
       includeIndeed,
       recentlyChangedJobs: record?.recentlyChangedJobs === true,
@@ -88,7 +89,7 @@ export async function POST(request: Request) {
     const result = await searchCandidates(spec, {
       token: process.env.APIFY_TOKEN,
       includeEmail,
-      enrichTopN: Math.min(25, Math.max(1, Math.round(Number(process.env.ENRICH_TOP_N) || 10))),
+      aiMatch: true,
     });
     return NextResponse.json(result);
   } catch (error) {

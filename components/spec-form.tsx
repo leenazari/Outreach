@@ -187,7 +187,7 @@ export function SpecForm({ value, loading, onChange, onSubmit }: SpecFormProps) 
           <Label htmlFor="openToWork">Open to Work</Label>
           <p className="text-sm leading-5 text-muted-foreground">
             On by default. LinkedIn does not offer this filter outside Recruiter, so the search reads one full page of
-            25 short profiles, checks Open to Work on the top 10 full profiles, and also searches recent posts from
+            25 short profiles, then a full profile for each person still in range, and also searches recent posts from
             people who say they are looking.
           </p>
         </div>
@@ -202,8 +202,8 @@ export function SpecForm({ value, loading, onChange, onSubmit }: SpecFormProps) 
         <div className="grid gap-1">
           <Label htmlFor="includeEmail">Email search on the enriched LinkedIn profiles</Label>
           <p className="text-sm leading-5 text-muted-foreground">
-            Off by default. The top matches are re-scored from a $0.004 full profile with no email. This switch adds a
-            second $0.01 email lookup for those same profiles.
+            Off by default. Each returned LinkedIn profile is enriched at $0.004 with no email. This switch adds a
+            $0.01 email lookup on those same profiles.
           </p>
         </div>
       </div>

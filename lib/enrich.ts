@@ -1,5 +1,7 @@
 import { isVanityLinkedInUrl, memberKeysFrom } from "./linkedin";
-import type { RawCandidate } from "./types";
+import { commuteDecision } from "./location-fit";
+import { dedupeCandidates } from "./rank";
+import type { ParsedSpec, RawCandidate } from "./types";
 import { canonicalName, canonicalProfileUrl, uniqueStrings } from "./text";
 
 const UNPUBLISHED_NAME = "name not published";
@@ -26,6 +28,24 @@ export function enrichmentQuery(target: EnrichmentTarget): string | null {
   if (id) return `https://www.linkedin.com/in/${id}`;
   if (/linkedin\.com\//i.test(url)) return url.split(/[?#]/)[0] ?? url;
   return null;
+}
+
+export function profilesToEnrich(records: RawCandidate[], spec: ParsedSpec, limit: number): string[] {
+  const urls: string[] = [];
+  const seen = new Set<string>();
+  for (const record of dedupeCandidates(records)) {
+    if (urls.length >= limit) break;
+    if (commuteDecision(record.location, spec) === "excluded") continue;
+    const url = enrichmentQuery({
+      score: record.firstPassScore ?? 0,
+      profileUrl: record.profileUrl,
+      linkedinIds: record.linkedinIds,
+    });
+    if (!url || seen.has(url)) continue;
+    seen.add(url);
+    urls.push(url);
+  }
+  return urls;
 }
 
 export function selectEnrichmentTargets<T extends EnrichmentTarget>(candidates: T[], limit: number): T[] {
@@ -91,6 +111,9 @@ export function applyEnrichment(records: RawCandidate[], enriched: RawCandidate[
     target.queryUrls = uniqueStrings([...(target.queryUrls ?? []), ...(extra.queryUrls ?? [])]);
     target.haystack = `${target.haystack}\n${extra.haystack}`;
     if (extra.snippet) target.snippet = extra.snippet;
+    if (extra.headline) target.headline = extra.headline;
+    if (extra.about) target.about = extra.about;
+    if ((extra.skills?.length ?? 0) > 0) target.skills = extra.skills;
     if (!target.email && extra.email) target.email = extra.email;
     if (!target.photoUrl && extra.photoUrl) target.photoUrl = extra.photoUrl;
     target.enriched = true;

@@ -233,11 +233,12 @@ describe("actor inputs", () => {
     assert.equal(ranked.candidates[0]?.profileUrl, "https://www.linkedin.com/in/arjun-ahluwalia-acsi");
   });
 
-  it("estimates the open-to-work search at the page price plus ten profiles and fifteen posts", () => {
+  it("estimates the open-to-work search under thirty cents before email", () => {
     const on = estimateSearchCost({ openToWork: true, includeIndeed: false, includeEmail: false, watchPhrases: false });
-    assert.equal(on.totalUsd, 0.17);
+    assert.equal(on.totalUsd, 0.25);
+    assert.ok(on.totalUsd < 0.3);
     const off = estimateSearchCost({ openToWork: false, includeIndeed: false, includeEmail: false, watchPhrases: true });
-    assert.equal(off.totalUsd, 0.15);
+    assert.equal(off.totalUsd, 0.17);
   });
 
   it("builds the run endpoint without putting a token in the URL", () => {
@@ -453,7 +454,7 @@ describe("live failures", () => {
       { ...spec, useSampleData: true, watchPhrases: [] },
       { token: "present", runActor: runner },
     );
-    assert.deepEqual(calls, [PROFILE_ACTOR]);
+    assert.deepEqual(calls, [PROFILE_ACTOR, ENRICH_ACTOR]);
     assert.equal(live.mode, "live");
     assert.match(
       live.notices.find((notice) => notice.source === "indeed-resume")?.message ?? "",
@@ -560,13 +561,14 @@ describe("live failures", () => {
       "https://www.linkedin.com/in/ACwAAARoshan001",
       "https://www.linkedin.com/in/ACwAAARussell01",
       "https://www.linkedin.com/in/ACwAAASharifa01",
+      "https://www.linkedin.com/in/arjun-ahluwalia",
     ]);
     const sharifa = result.candidates.find((candidate) => candidate.name === "Sharifa Sardal");
     assert.equal(sharifa?.company, "Acme SaaS");
     assert.equal(sharifa?.profileUrl, "https://www.linkedin.com/in/sharifa-sardal");
     assert.notEqual(sharifa?.score, before);
     assert.equal(result.candidates.some((candidate) => candidate.profileUrl?.includes("arjun")), true);
-    assert.equal(queries.some((query) => query.includes("arjun")), false);
+    assert.equal(queries.some((query) => query.includes("arjun")), true);
   });
 });
 

@@ -2,6 +2,7 @@ import { RESULT_LIMIT } from "./actors";
 import type { Candidate, ParsedSpec, RawCandidate, ScoreReason, SourceId, ValidationStatus } from "./types";
 import { canonicalName, canonicalProfileUrl, clip, haystackIncludes, uniqueStrings } from "./text";
 import { locationRegion } from "./identity";
+import { commuteDecision } from "./location-fit";
 import { isVanityLinkedInUrl, memberKeysFrom } from "./linkedin";
 import { scoreMatch } from "./match";
 import { validateProfile } from "./validate";
@@ -179,7 +180,8 @@ function experienceSummary(record: RawCandidate): string {
 }
 
 function scoreOne(record: RawCandidate, spec: ParsedSpec): Candidate | null {
-  if (countryContradiction(record.location, spec.location)) return null;
+  const locationStatus = commuteDecision(record.location, spec);
+  if (locationStatus === "excluded") return null;
 
   const matchedMustHaves = spec.mustHave.filter((phrase) => haystackIncludes(record.haystack, phrase));
 
@@ -251,6 +253,12 @@ function scoreOne(record: RawCandidate, spec: ParsedSpec): Candidate | null {
     firstPassScore: record.firstPassScore ?? match.score,
     enriched: record.enriched === true,
     industry: record.industry?.trim() || null,
+    scoreSource: "heuristic",
+    matchReason: "",
+    matchedSkills: [],
+    missingSkills: [],
+    locationStatus,
+    aiScores: null,
   };
 }
 
@@ -258,21 +266,23 @@ export function rankCandidates(
   records: RawCandidate[],
   spec: ParsedSpec,
   options?: { limit?: number },
-): { candidates: Candidate[]; afterDedupe: number; droppedForMustHave: number; matched: number } {
+): { candidates: Candidate[]; afterDedupe: number; droppedForMustHave: number; excludedForLocation: number; matched: number } {
   const deduped = dedupeCandidates(records);
   const candidates: Candidate[] = [];
-  let droppedForMustHave = 0;
+  let excludedForLocation = 0;
 
   for (const record of deduped) {
     const scored = scoreOne(record, spec);
     if (!scored) {
-      droppedForMustHave += 1;
+      excludedForLocation += 1;
       continue;
     }
     candidates.push(scored);
   }
 
   candidates.sort((a, b) => {
+    const location = Number(a.locationStatus === "unknown") - Number(b.locationStatus === "unknown");
+    if (location !== 0) return location;
     if (b.score !== a.score) return b.score - a.score;
     const experience = (candidate: Candidate) => candidate.subscores.find((item) => item.key === "experience")?.score ?? -1;
     if (experience(b) !== experience(a)) return experience(b) - experience(a);
@@ -283,7 +293,8 @@ export function rankCandidates(
   return {
     candidates: candidates.slice(0, options?.limit ?? RESULT_LIMIT),
     afterDedupe: deduped.length,
-    droppedForMustHave,
+    droppedForMustHave: excludedForLocation,
+    excludedForLocation,
     matched: candidates.length,
   };
 }

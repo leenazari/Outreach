@@ -109,8 +109,8 @@ function Ready({ result }: { result: SearchResponse }) {
       )}
 
       <p className="text-sm leading-6 text-muted-foreground">
-        {result.stats.collected} records collected · {result.stats.afterDedupe} after dedupe ·{" "}
-        {result.stats.droppedForMustHave} dropped for a country contradiction · {result.stats.returned} ranked
+        {result.stats.collected} records collected · {result.stats.afterDedupe} after dedupe · Excluded for location{" "}
+        {result.stats.excludedForLocation} · {result.stats.returned} ranked
         {result.spec.salaryLabel !== "Not specified" ? ` · Salary ${result.spec.salaryLabel} not scored` : ""}
       </p>
       <p className="text-sm leading-6">
@@ -146,9 +146,8 @@ function Ready({ result }: { result: SearchResponse }) {
         <div className="rounded-2xl border border-border bg-card p-5">
           <h2 className="font-serif text-2xl tracking-tight">No one was left in this search</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            {result.stats.droppedForMustHave} profile{result.stats.droppedForMustHave === 1 ? "" : "s"} listed a
-            different country from the spec. Everyone else is scored, including people whose short profile did not
-            mention a requirement.
+            Excluded for location: {result.stats.excludedForLocation}. Someone with no location is kept and labelled
+            Location unknown. Everyone else is scored from their work history.
           </p>
         </div>
       ) : (
@@ -227,6 +226,7 @@ function CandidateCard({
             ) : null}
             <span aria-hidden> · </span>
             {candidate.location}
+            {candidate.locationStatus === "unknown" ? " · Location unknown" : ""}
           </p>
         </div>
         <p className="shrink-0 text-right">
@@ -237,25 +237,42 @@ function CandidateCard({
       <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-secondary" aria-hidden>
         <div className="h-full rounded-full bg-primary" style={{ width: `${candidate.score}%` }} />
       </div>
-      <ul className="mt-3 grid gap-1">
-        {candidate.subscores.map((item) => (
-          <li key={item.key} className="flex items-baseline justify-between gap-3 text-sm leading-6">
-            <span>
-              {item.label}
-              <span className="text-muted-foreground"> · {item.reason}</span>
-            </span>
-            <span className="shrink-0 tabular-nums text-muted-foreground">
-              {item.assessed ? `${item.score} · ${weightedPoints(item)}/${item.weight}` : "not assessed"}
-            </span>
-          </li>
-        ))}
-      </ul>
+      {candidate.matchReason ? <p className="mt-3 text-sm leading-6">{candidate.matchReason}</p> : null}
+      {candidate.matchedSkills.length > 0 ? (
+        <p className="mt-1 text-sm leading-6 text-muted-foreground">Matched: {candidate.matchedSkills.join(", ")}</p>
+      ) : null}
+      {candidate.missingSkills.length > 0 ? (
+        <p className="mt-1 text-sm leading-6 text-muted-foreground">Missing: {candidate.missingSkills.join(", ")}</p>
+      ) : null}
+      {candidate.scoreSource === "heuristic" ? (
+        <ul className="mt-3 grid gap-1">
+          {candidate.subscores.map((item) => (
+            <li key={item.key} className="flex items-baseline justify-between gap-3 text-sm leading-6">
+              <span>
+                {item.label}
+                <span className="text-muted-foreground"> · {item.reason}</span>
+              </span>
+              <span className="shrink-0 tabular-nums text-muted-foreground">
+                {item.assessed ? `${item.score} · ${weightedPoints(item)}/${item.weight}` : "not assessed"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : candidate.aiScores ? (
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">
+          {candidate.aiScores.relevantExperienceYears} relevant years · role {candidate.aiScores.roleRelevance} ·
+          industry {candidate.aiScores.industrySimilarity} · seniority {candidate.aiScores.seniorityFit} · skills{" "}
+          {candidate.aiScores.skillsMatch}
+        </p>
+      ) : null}
       <p className="mt-3 text-sm leading-6">{candidate.experienceSummary}</p>
       {candidate.skills.length > 0 ? (
         <p className="mt-1 text-sm leading-6 text-muted-foreground">Skills: {candidate.skills.join(", ")}</p>
       ) : null}
       <div className="mt-3 flex flex-wrap gap-2">
         <Badge className={VALIDATION_CLASS[candidate.validation.status]}>{candidate.validation.label}</Badge>
+        {candidate.locationStatus === "unknown" ? <Badge variant="outline">Location unknown</Badge> : null}
+        {candidate.scoreSource === "heuristic" ? <Badge variant="outline">Heuristic score</Badge> : null}
         {candidate.openToWork ? <Badge variant="outline">Open to Work</Badge> : null}
         {candidate.openToWorkPostUrl ? <Badge variant="outline">Announced open to work (post)</Badge> : null}
         {candidate.sources.map((source) => (
