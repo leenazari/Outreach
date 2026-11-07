@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { ENRICH_ACTOR, PROFILE_ACTOR } from "./actors";
-import { parseRunCharge, readRunSnapshot, withSettledUsageTotal } from "./charge";
+import { chargeIsSettled, parseRunCharge, readRunSnapshot, withSettledUsageTotal } from "./charge";
 import { usdToMicros } from "./money";
 
 function run(extra: Record<string, unknown>) {
@@ -173,5 +173,22 @@ describe("Apify run charge", () => {
     );
     assert.equal(bare.settled, false);
     assert.equal(bare.totalUsd, null);
+  });
+
+  it("waits out a usage total that is one profile short of the event price", () => {
+    const partial = run({
+      usageTotalUsd: 0.036,
+      chargedEventCounts: { profile: 10 },
+      accountedChargedEventCounts: { profile: 10 },
+      pricingInfo: {
+        pricingModel: "PAY_PER_EVENT",
+        pricingPerEvent: {
+          actorChargeEvents: { profile: { eventTitle: "Profile details", eventPriceUsd: 0.004 } },
+        },
+      },
+    });
+    assert.equal(chargeIsSettled(partial!), false);
+    const settled = withSettledUsageTotal(partial!, ENRICH_ACTOR);
+    assert.equal(parseRunCharge(settled, 10).totalUsd, 0.04);
   });
 });

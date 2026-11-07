@@ -1,11 +1,12 @@
 import { ACTOR_TIMEOUT_SECS } from "./actors";
-import { readRunSnapshot, withSettledUsageTotal, type ActorRunSnapshot } from "./charge";
+import { chargeIsSettled, readRunSnapshot, withSettledUsageTotal, type ActorRunSnapshot } from "./charge";
 import type { SourceId } from "./types";
 import { asRecord, asString } from "./text";
 
 export type ActorRunOptions = {
   timeoutSecs?: number;
   settleWaitMs?: number;
+  expectedEvents?: number;
 };
 
 export type ActorRunResult = {
@@ -83,6 +84,7 @@ async function getDatasetItems(token: string, datasetId: string): Promise<unknow
 export function createApifyRunner(token: string, timeoutSecs = ACTOR_TIMEOUT_SECS): ActorRunner {
   return async (actor, input, options) => {
     const timeout = options?.timeoutSecs ?? timeoutSecs;
+    const expectedEvents = options?.expectedEvents ?? 0;
     const started = Date.now();
     const deadline = started + (timeout + 20) * 1000;
     const response = await fetch(buildActorRunsUrl(actor, timeout), {
@@ -117,8 +119,11 @@ export function createApifyRunner(token: string, timeoutSecs = ACTOR_TIMEOUT_SEC
       let previous = "";
       while (Date.now() < settleBy) {
         const signature = `${run.usageTotalUsd ?? ""}:${JSON.stringify(run.chargedEventCounts)}`;
-        const usageReady = TERMINAL.has(run.status ?? "") && run.usageTotalUsd !== null && run.usageTotalUsd > 0;
-        if (usageReady && signature === previous) break;
+        const counted = Object.entries(run.chargedEventCounts ?? {})
+          .filter(([name]) => !/start/i.test(name))
+          .reduce((sum, [, count]) => sum + count, 0);
+        const enough = expectedEvents <= 0 || counted >= expectedEvents;
+        if (chargeIsSettled(run) && enough && signature === previous) break;
         previous = signature;
         const pause = Math.min(2_000, settleBy - Date.now());
         if (pause <= 0) break;

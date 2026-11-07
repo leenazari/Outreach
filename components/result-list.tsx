@@ -41,6 +41,7 @@ const VALIDATION_CLASS: Record<ValidationStatus, string> = {
   verified: "border-[#c9ddd9] bg-[#e7f3f1] text-[#0b3f3b]",
   review: "border-[#efd3ae] bg-[#fbf3e6] text-[#7a4510]",
   risk: "border-[#efc7c7] bg-[#fdf2f2] text-[#8c3030]",
+  unchecked: "border-border bg-secondary text-muted-foreground",
 };
 
 export function ResultList({

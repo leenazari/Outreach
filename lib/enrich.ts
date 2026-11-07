@@ -8,7 +8,16 @@ export type EnrichmentTarget = {
   score: number;
   profileUrl: string | null;
   linkedinIds?: string[];
+  subscores?: { key: string; assessed: boolean }[];
 };
+
+function assessedEnough(target: EnrichmentTarget): boolean {
+  const subscores = target.subscores;
+  if (!subscores || subscores.length === 0) return true;
+  const assessed = (key: string) => subscores.find((item) => item.key === key)?.assessed === true;
+  const others = subscores.filter((item) => item.assessed && item.key !== "title" && item.key !== "location").length;
+  return assessed("title") && assessed("location") && others >= 1;
+}
 
 export function enrichmentQuery(target: EnrichmentTarget): string | null {
   const url = target.profileUrl?.trim() ?? "";
@@ -22,7 +31,7 @@ export function enrichmentQuery(target: EnrichmentTarget): string | null {
 export function selectEnrichmentTargets<T extends EnrichmentTarget>(candidates: T[], limit: number): T[] {
   return [...candidates]
     .sort((a, b) => b.score - a.score)
-    .filter((candidate) => candidate.score >= 50 && enrichmentQuery(candidate))
+    .filter((candidate) => candidate.score >= 50 && assessedEnough(candidate) && enrichmentQuery(candidate))
     .slice(0, Math.max(0, limit));
 }
 

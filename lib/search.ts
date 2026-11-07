@@ -15,8 +15,9 @@ import { applyEnrichment, enrichmentQuery, selectEnrichmentTargets } from "./enr
 import { normaliseIndeedResume, normaliseLinkedInPost, normaliseLinkedInProfile } from "./normalise";
 import { salaryLabel } from "./parse";
 import { buildExport, EXPORT_RECORD_KEY, postInterviewaWebhook } from "./interviewa";
-import { rankCandidates } from "./rank";
+import { candidateKey, rankCandidates } from "./rank";
 import { buildSampleCandidates } from "./sample";
+import { canonicalName } from "./text";
 import type { ParsedSpec, RawCandidate, SearchResponse, SourceId, SourceNotice, WorkRole } from "./types";
 
 const SOURCE_BY_ACTOR: Record<string, SourceId> = {
@@ -234,8 +235,14 @@ export async function searchCandidates(
   const enrichLimit = Math.min(25, Math.max(1, options.enrichTopN ?? 10));
   const preview = rankCandidates(raw, { ...spec, openToWork: false }, {
     limit: Math.max(raw.length, 1),
-    preferOpenToWork: false,
   });
+  for (const candidate of preview.candidates) {
+    for (const record of raw) {
+      const sameId = candidateKey(record) === candidate.id;
+      const sameName = canonicalName(record.name) !== "" && canonicalName(record.name) === canonicalName(candidate.name ?? "");
+      if (sameId || sameName) record.firstPassScore = candidate.score;
+    }
+  }
   const urls = selectEnrichmentTargets(preview.candidates, enrichLimit)
     .map((candidate) => enrichmentQuery(candidate))
     .filter((url): url is string => Boolean(url));
@@ -258,6 +265,7 @@ export async function searchCandidates(
       const enriched = await runActor(ENRICH_ACTOR, buildEnrichInput(urls, false), {
         timeoutSecs,
         settleWaitMs: remaining > 30_000 ? 10_000 : 0,
+        expectedEvents: urls.length,
       });
       runs.push({ actor: ENRICH_ACTOR, items: enriched.items, run: enriched.run });
       if (enriched.run?.status && FAILED_STATUS.has(enriched.run.status)) {

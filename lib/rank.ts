@@ -21,12 +21,14 @@ export const VALIDATION_POINTS: Record<ValidationStatus, number> = {
   verified: 0,
   review: -8,
   risk: -20,
+  unchecked: 0,
 };
 
 const VALIDATION_WHY: Record<ValidationStatus, string> = {
   verified: "Validation: public work history is consistent",
   review: "Validation: needs review",
   risk: "Validation: high risk",
+  unchecked: "Validation: not checked (short profile)",
 };
 
 export function candidateKey(record: RawCandidate): string {
@@ -200,6 +202,7 @@ function scoreOne(record: RawCandidate, spec: ParsedSpec): Candidate | null {
       location: record.location,
       experience: record.experience,
       connections: record.connections,
+      enriched: record.enriched === true,
     },
     spec,
   );
@@ -245,13 +248,16 @@ function scoreOne(record: RawCandidate, spec: ParsedSpec): Candidate | null {
     validation,
     openToWork: record.openToWork === true,
     openToWorkPostUrl: record.openToWorkPostUrl ?? null,
+    firstPassScore: record.firstPassScore ?? match.score,
+    enriched: record.enriched === true,
+    industry: record.industry?.trim() || null,
   };
 }
 
 export function rankCandidates(
   records: RawCandidate[],
   spec: ParsedSpec,
-  options?: { limit?: number; preferOpenToWork?: boolean },
+  options?: { limit?: number },
 ): { candidates: Candidate[]; afterDedupe: number; droppedForMustHave: number; matched: number } {
   const deduped = dedupeCandidates(records);
   const candidates: Candidate[] = [];
@@ -266,12 +272,7 @@ export function rankCandidates(
     candidates.push(scored);
   }
 
-  const preferOpen = options?.preferOpenToWork ?? spec.openToWork === true;
   candidates.sort((a, b) => {
-    if (preferOpen) {
-      const open = (candidate: Candidate) => candidate.openToWork || Boolean(candidate.openToWorkPostUrl);
-      if (open(a) !== open(b)) return open(a) ? -1 : 1;
-    }
     if (b.score !== a.score) return b.score - a.score;
     const experience = (candidate: Candidate) => candidate.subscores.find((item) => item.key === "experience")?.score ?? -1;
     if (experience(b) !== experience(a)) return experience(b) - experience(a);

@@ -13,7 +13,7 @@ export const PROFILE_PAGE_ITEMS = 25;
 export const POST_MAX_POSTS = 5;
 export const OPEN_TO_WORK_MAX_POSTS = 15;
 export const INDEED_MAX_ITEMS = 3;
-export const RESULT_LIMIT = 10;
+export const RESULT_LIMIT = 25;
 export const ACTOR_TIMEOUT_SECS = 240;
 
 export function buildIndeedResumeSearchUrl(title: string, location: string): string {

@@ -339,6 +339,9 @@ export function scoreMatch(
   const weightSum = assessed.reduce((total, item) => total + item.weight, 0);
   const raw = weightSum === 0 ? 0 : Math.round(assessed.reduce((total, item) => total + item.score * item.weight, 0) / weightSum);
   let score = Math.max(0, Math.min(100, raw));
+  // A title and a seniority word alone renormalise to a high percentage. Require
+  // three assessed criteria before that percentage can outrank a fuller profile.
+  if (assessed.length < 3) score = Math.min(score, HIGH_RISK_SCORE_CAP);
   if (validation === "risk") score = Math.min(score, HIGH_RISK_SCORE_CAP);
   if (record.enriched && industryConflict(spec, record)) score = Math.min(score, INDUSTRY_SCORE_CAP);
   return {

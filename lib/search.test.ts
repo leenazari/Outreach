@@ -149,6 +149,32 @@ describe("actor inputs", () => {
     assert.equal(ranked.candidates[0]?.openToWork, true);
     assert.equal(ranked.candidates[0]?.score, Math.min(100, (ranked.candidates[1]?.score ?? 0) + 10));
     assert.ok((ranked.candidates[0]?.score ?? 0) <= 100);
+
+    const weakOpen = raw({
+      name: "Gurdeep Gill",
+      haystack: "Business management",
+      title: "Operations Manager",
+      location: "",
+      profileUrl: "https://www.linkedin.com/in/gurdeep",
+      openToWorkPostUrl: "https://www.linkedin.com/posts/gurdeep-activity-1",
+    });
+    const stronger = raw({
+      name: "Sharifa Sardal",
+      haystack: "Senior Sales Executive\nLondon\nB2B SaaS\nCRM",
+      title: "Senior Sales Executive",
+      location: "London",
+      profileUrl: "https://www.linkedin.com/in/sharifa",
+      detailOnRecord: true,
+    });
+    const ordered = rankCandidates([weakOpen, stronger], {
+      ...spec,
+      openToWork: true,
+      mustHave: ["B2B SaaS"],
+      niceToHave: [],
+      watchPhrases: [],
+    });
+    assert.equal(ordered.candidates[0]?.name, "Sharifa Sardal");
+    assert.ok((ordered.candidates[0]?.score ?? 0) > (ordered.candidates[1]?.score ?? 100));
   });
 
   it("dedupes an open-to-work post against the same member id", () => {
@@ -297,7 +323,7 @@ describe("ranking", () => {
 
     assert.equal(ranked.afterDedupe, 1);
     assert.equal(ranked.candidates[0]?.score, 100);
-    assert.equal(ranked.candidates[0]?.validation.status, "review");
+    assert.equal(ranked.candidates[0]?.validation.status, "unchecked");
     assert.deepEqual(ranked.candidates[0]?.sources, ["indeed-resume", "linkedin-profile"]);
     assert.equal(dedupeCandidates([]).length, 0);
   });

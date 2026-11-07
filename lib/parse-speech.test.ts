@@ -66,7 +66,7 @@ describe("spoken spec parser", () => {
 });
 
 describe("result cap", () => {
-  it("returns at most 10 ranked candidates", () => {
+  it("returns at most 25 ranked candidates", () => {
     const spec: ParsedSpec = {
       jobTitle: "Sales Executive",
       location: "London",
@@ -78,7 +78,7 @@ describe("result cap", () => {
       watchPhrases: [],
       useSampleData: true,
     };
-    const records: RawCandidate[] = Array.from({ length: 12 }, (_, index) => ({
+    const records: RawCandidate[] = Array.from({ length: 30 }, (_, index) => ({
       name: `Person ${String(index).padStart(2, "0")}`,
       title: "Sales Executive",
       location: "London",
@@ -93,7 +93,7 @@ describe("result cap", () => {
       sample: false,
     }));
     const ranked = rankCandidates(records, spec);
-    assert.equal(ranked.matched, 12);
-    assert.equal(ranked.candidates.length, 10);
+    assert.equal(ranked.matched, 30);
+    assert.equal(ranked.candidates.length, 25);
   });
 });

@@ -1,24 +1,11 @@
 import type { ParsedSpec, Validation, ValidationReason, ValidationStatus, WorkRole } from "./types";
-import { haystackIncludes } from "./text";
 import { formatYearMonth, monthIndex } from "./work";
-
-const NUMBER_WORDS: Record<string, number> = {
-  one: 1,
-  two: 2,
-  three: 3,
-  four: 4,
-  five: 5,
-  six: 6,
-  seven: 7,
-  eight: 8,
-  nine: 9,
-  ten: 10,
-};
 
 const STATUS_LABEL: Record<ValidationStatus, string> = {
   verified: "Verified consistent",
   review: "Needs review",
   risk: "High risk",
+  unchecked: "Not checked (short profile)",
 };
 
 type Reason = ValidationReason & { severe: boolean };
@@ -87,38 +74,6 @@ function seniority(title: string): number {
   return 2;
 }
 
-function roleText(role: WorkRole): string {
-  return `${role.title} ${role.company} ${role.detail}`;
-}
-
-function roleMatches(role: WorkRole, subject: string): boolean {
-  if (haystackIncludes(roleText(role), subject)) return true;
-  const tokens = subject
-    .toLowerCase()
-    .split(/[^a-z0-9+]+/)
-    .filter((token) => token.length >= 3);
-  if (tokens.length === 0) return false;
-  const hits = tokens.filter((token) => haystackIncludes(roleText(role), token)).length;
-  return hits * 2 >= tokens.length;
-}
-
-function yearRequirements(mustHave: string[]): { years: number; subject: string }[] {
-  const found: { years: number; subject: string }[] = [];
-  for (const phrase of mustHave) {
-    const match =
-      /(?:at least\s+)?(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s*\+?\s*years?(?:\s+of)?\s+(.+)/i.exec(
-        phrase,
-      );
-    if (!match?.[1] || !match[2]) continue;
-    const raw = match[1].toLowerCase();
-    const years = Number.isFinite(Number(raw)) ? Number(raw) : NUMBER_WORDS[raw];
-    if (!years || years > 40) continue;
-    const subject = match[2].replace(/\bexperience\b/gi, "").replace(/[.,;]+$/g, "").trim();
-    if (subject) found.push({ years, subject });
-  }
-  return found;
-}
-
 function coveredMonths(roles: DatedRole[]): number {
   if (roles.length === 0) return 0;
   const points = [...roles].sort((a, b) => a.startIndex - b.startIndex);
@@ -144,6 +99,7 @@ export function validateProfile(
     location: string;
     experience?: WorkRole[];
     connections?: number | null;
+    enriched?: boolean;
   },
   spec: Pick<ParsedSpec, "mustHave">,
   now = new Date(),
@@ -300,28 +256,6 @@ export function validateProfile(
     });
   }
 
-  for (const requirement of yearRequirements(spec.mustHave)) {
-    const needed = requirement.years * 12;
-    const relevant = sensible.filter((role) => roleMatches(role, requirement.subject));
-    const months = coveredMonths(relevant);
-    if (totalMonths > 0 && totalMonths * 2 < needed) {
-      reasons.push({
-        severe: true,
-        summary: "The dated public history is under half the years named in a must-have.",
-        evidence: `The spec asks for ${requirement.years} years of ${requirement.subject}. Dated roles add up to ${totalMonths} months in total.`,
-      });
-    } else if (months < needed) {
-      reasons.push({
-        severe: false,
-        summary: "Dated public experience does not cover a years requirement in the spec.",
-        evidence:
-          months === 0
-            ? `The spec asks for ${requirement.years} years of ${requirement.subject}. No dated role clearly covers that subject.`
-            : `The spec asks for ${requirement.years} years of ${requirement.subject}. Dated matching roles cover ${months} months.`,
-      });
-    }
-  }
-
   const thinHistory = dated.length < 2;
   if (thinHistory) {
     for (const reason of reasons) {
@@ -331,7 +265,11 @@ export function validateProfile(
   }
 
   const severe = reasons.some((reason) => reason.severe);
-  const status: ValidationStatus = severe ? "risk" : reasons.length > 0 ? "review" : "verified";
+  let status: ValidationStatus = severe ? "risk" : reasons.length > 0 ? "review" : "verified";
+  if (input.enriched === false && !severe && dated.length < 2) {
+    const specific = reasons.filter((reason) => reason.summary !== "There is not enough dated public history to call this consistent.");
+    if (specific.length === 0) status = "unchecked";
+  }
   const visible: ValidationReason[] =
     status === "verified"
       ? [
@@ -340,7 +278,14 @@ export function validateProfile(
             evidence: `${dated.length} dated role${dated.length === 1 ? "" : "s"} showed no overlap, date, or seniority flag.`,
           },
         ]
-      : reasons.map(({ summary, evidence }) => ({ summary, evidence }));
+      : status === "unchecked"
+        ? [
+            {
+              summary: "Not checked (short profile)",
+              evidence: "The full profile was not fetched, so the work history was not checked.",
+            },
+          ]
+        : reasons.map(({ summary, evidence }) => ({ summary, evidence }));
 
   return { status, label: STATUS_LABEL[status], reasons: visible };
 }

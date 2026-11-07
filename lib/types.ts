@@ -69,7 +69,7 @@ export type RecordOrigin = {
   hasExperience: boolean;
 };
 
-export type ValidationStatus = "verified" | "review" | "risk";
+export type ValidationStatus = "verified" | "review" | "risk" | "unchecked";
 
 export type ValidationReason = {
   summary: string;
@@ -172,6 +172,9 @@ export type Candidate = {
   validation: Validation;
   openToWork: boolean;
   openToWorkPostUrl: string | null;
+  firstPassScore: number;
+  enriched: boolean;
+  industry: string | null;
 };
 
 export type SourceNotice = {
@@ -240,4 +243,5 @@ export type RawCandidate = {
   detailOnRecord?: boolean;
   openToWork?: boolean;
   openToWorkPostUrl?: string | null;
+  firstPassScore?: number;
 };

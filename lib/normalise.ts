@@ -163,9 +163,11 @@ export function normaliseLinkedInPost(item: unknown, watchPhrases: string[]): Ra
   const title = (author ? asString(author.info) : "") || "LinkedIn member";
   const matched = watchPhrases.filter((phrase) => haystackIncludes(`${content}\n${title}`, phrase));
   const snippet = clip(content, 420);
-  const postUrl =
-    [asString(record.postUrl), asString(record.url), asString(record.shareUrl)].find((value) => value && value !== profileUrl) ||
-    null;
+  const social = asRecord(record.socialContent);
+  const postLinks = [asString(record.postUrl), asString(record.linkedinUrl), asString(record.shareLinkedinUrl), asString(social?.shareUrl), asString(record.url)].filter(
+    (value) => /linkedin\.com\/(posts|feed)\//i.test(value),
+  );
+  const postUrl = postLinks.find((value) => /\/posts\//i.test(value)) ?? postLinks[0] ?? null;
   const announced = /open to work|looking for my next role/i.test(`${content}\n${asString(record.query)}`);
   const authorIds = author ? collectLinkedInIds(author) : [];
 
