@@ -13,7 +13,7 @@ import {
 import { buildSearchSpend, sampleSpend, type SpendRunInput } from "./attribute";
 import { createApifyRunner, putStoreRecord, saveSearchGroup, SourceFailure, type ActorRunner, type ActorRunResult } from "./apify";
 import type { ActorRunSnapshot } from "./charge";
-import { aiGatewayConfigured, createGatewayJudge, scoreCandidatesWithAi } from "./ai-match";
+import { createGatewayJudge, matchErrorMessage, scoreCandidatesWithAi } from "./ai-match";
 import { applyEnrichment, profilesToEnrich } from "./enrich";
 import { normaliseIndeedResume, normaliseLinkedInPost, normaliseLinkedInProfile } from "./normalise";
 import { salaryLabel } from "./parse";
@@ -22,7 +22,7 @@ import { candidateKey, rankCandidates } from "./rank";
 import { buildSampleCandidates } from "./sample";
 import { canonicalName } from "./text";
 import type { CandidateJudge } from "./ai-match";
-import type { LlmSpend, ParsedSpec, RawCandidate, SearchResponse, SourceId, SourceNotice, WorkRole } from "./types";
+import type { LlmSpend, ParsedSpec, RawCandidate, SearchRequest, SearchResponse, SourceId, SourceNotice, WorkRole } from "./types";
 
 const SOURCE_BY_ACTOR: Record<string, SourceId> = {
   [PROFILE_ACTOR]: "linkedin-profile",
@@ -165,6 +165,7 @@ export async function searchCandidates(
     enrichTopN?: number;
     aiMatch?: boolean;
     judge?: CandidateJudge;
+    storedRequest?: SearchRequest | null;
   },
 ): Promise<SearchResponse> {
   const token = options.token?.trim() ?? "";
@@ -337,39 +338,27 @@ export async function searchCandidates(
   let llm: LlmSpend | null = null;
   const wantsAi = options.aiMatch === true;
   if (wantsAi && result.candidates.length > 0 && SEARCH_BUDGET_MS - (Date.now() - budgetStart) > 15_000) {
-    const judge = options.judge ?? (aiGatewayConfigured() ? createGatewayJudge() : null);
-    if (!judge) {
-      for (const candidate of result.candidates) {
-        candidate.scoreSource = "heuristic";
-        candidate.matchReason = "Heuristic score (AI match unavailable)";
-      }
-      result.notices.push({
-        source: "apify",
-        level: "info",
-        message: "AI match was skipped because Vercel AI Gateway is not configured. Scores use the heuristic.",
-      });
-    } else {
-      try {
-        llm = await scoreCandidatesWithAi(result.candidates, raw, spec, { judge });
-        attachLlmSpend(result, llm);
-        if (llm.failed > 0) {
-          result.notices.push({
-            source: "apify",
-            level: "warning",
-            message: `AI match failed for ${llm.failed} of ${llm.calls} profiles. Those cards use the heuristic score.`,
-          });
-        }
-      } catch (error) {
-        for (const candidate of result.candidates) {
-          candidate.scoreSource = "heuristic";
-          candidate.matchReason = "Heuristic score (AI match failed)";
-        }
+    const judge = options.judge ?? createGatewayJudge();
+    try {
+      llm = await scoreCandidatesWithAi(result.candidates, raw, spec, { judge });
+      attachLlmSpend(result, llm);
+      if (llm.failed > 0) {
         result.notices.push({
           source: "apify",
           level: "warning",
-          message: `AI match failed: ${describeActorError(error)} Scores use the heuristic.`,
+          message: `AI match failed for ${llm.failed} of ${llm.calls} profiles: ${llm.error ?? "The AI match call failed."} Those cards use the heuristic score.`,
         });
       }
+    } catch (error) {
+      for (const candidate of result.candidates) {
+        candidate.scoreSource = "heuristic";
+        candidate.matchReason = "Heuristic score (AI match failed)";
+      }
+      result.notices.push({
+        source: "apify",
+        level: "warning",
+        message: `AI match failed: ${matchErrorMessage(error)} Scores use the heuristic.`,
+      });
     }
   }
 
@@ -382,6 +371,7 @@ export async function searchCandidates(
         jobTitle: spec.jobTitle,
         location: spec.location,
         runIds,
+        request: options.storedRequest ?? null,
         llm,
       });
     } catch {

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { formatUsdAmount } from "@/lib/money";
 import { weightedPoints } from "@/lib/identity";
 import type { Candidate, SearchResponse, SourceId, ValidationStatus } from "@/lib/types";
@@ -49,11 +50,15 @@ export function ResultList({
   error,
   result,
   tokenConfigured,
+  canRerun,
+  onRerun,
 }: {
   status: "idle" | "loading" | "error" | "ready";
   error: string | null;
   result: SearchResponse | null;
   tokenConfigured: boolean;
+  canRerun: boolean;
+  onRerun: () => void;
 }) {
   return (
     <section className="grid gap-4" aria-busy={status === "loading"} aria-live="polite">
@@ -89,12 +94,20 @@ export function ResultList({
         </p>
       ) : null}
 
-      {status === "ready" && result ? <Ready result={result} /> : null}
+      {status === "ready" && result ? <Ready result={result} canRerun={canRerun} onRerun={onRerun} /> : null}
     </section>
   );
 }
 
-function Ready({ result }: { result: SearchResponse }) {
+function Ready({
+  result,
+  canRerun,
+  onRerun,
+}: {
+  result: SearchResponse;
+  canRerun: boolean;
+  onRerun: () => void;
+}) {
   return (
     <div className="grid gap-4">
       {result.mode === "sample" ? (
@@ -105,6 +118,7 @@ function Ready({ result }: { result: SearchResponse }) {
       ) : (
         <p className="rounded-2xl border border-border bg-card px-4 py-3 text-sm leading-6 text-muted-foreground">
           Searched LinkedIn for: {result.spec.searchedFor}. Salary band {result.spec.salaryLabel} was not scored.
+          {result.spend.searchId ? ` Search id ${result.spend.searchId}.` : ""}
         </p>
       )}
 
@@ -113,6 +127,12 @@ function Ready({ result }: { result: SearchResponse }) {
         {result.stats.excludedForLocation} · {result.stats.returned} ranked
         {result.spec.salaryLabel !== "Not specified" ? ` · Salary ${result.spec.salaryLabel} not scored` : ""}
       </p>
+      <div>
+        <Button type="button" variant="outline" disabled={!canRerun} onClick={onRerun}>
+          Rerun last search
+        </Button>
+      </div>
+
       <p className="text-sm leading-6">
         <a className="font-medium underline decoration-[#c9ddd9] underline-offset-4" href="/api/candidates/export">
           Interviewa JSON export

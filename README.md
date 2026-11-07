@@ -85,11 +85,13 @@ You can dictate the spec. **Start recording** uses the browser Web Speech API (`
 
 ## Live only
 
-The search box starts empty. Placeholder text is not a spec. The API does not serve sample profiles. If Apify or the token fails, the page shows that error. `Include Indeed` defaults to on.
+The search box starts with the last spec kept in this browser, when there is one. Placeholder text is not a spec. The API does not serve sample profiles. If Apify or the token fails, the page shows that error. `Include Indeed` defaults to on.
 
 ## Apify spend
 
-The log is at [`/spend`](/spend). It lists recent runs of the four actors above, grouped into a search when a small record in the Apify key-value store `interviewa-candidate-finder` ties their run ids together. That record stores the search id, time, job title, location, and run ids. It does not store candidate profiles. If the record is missing, runs that started within a few seconds of each other are grouped instead.
+The last form is kept in the browser and filled in again on the next visit. **Rerun last search** runs that spec again. The five newest server searches are listed on the form; choosing one loads its spec. `POST /api/searches/{searchId}/rerun` runs a stored spec. `GET /api/searches` lists those five, including each search id.
+
+The log is at [`/spend`](/spend). It lists recent runs of the four actors above, grouped into a search when a small record in the Apify key-value store `interviewa-candidate-finder` ties their run ids together. That record stores the search id, time, job title, location, the submitted form, and run ids. It does not store candidate profiles. If the record is missing, runs that started within a few seconds of each other are grouped instead.
 
 ### How the charge is calculated
 
@@ -162,7 +164,7 @@ cp .env.example .env.local
 
 `OPENAI_API_KEY` is optional. Without it, spoken specs are parsed with the built-in rules. Do not prefix either variable with `NEXT_PUBLIC_`.
 
-AI matching uses Vercel AI Gateway. On Vercel the deployment's OIDC token is enough once the team has AI Gateway credits. Locally, set `AI_GATEWAY_API_KEY`, or link the project and run `vercel env pull` so `VERCEL_OIDC_TOKEN` is present. `AI_GATEWAY_MODEL` overrides the default `google/gemini-2.5-flash-lite`. Without either credential the search still returns the heuristic score and labels it.
+AI matching calls Vercel AI Gateway through the AI SDK. On Vercel the request OIDC token is read by `@vercel/oidc`. Locally, set `AI_GATEWAY_API_KEY`, or link the project and run `vercel env pull`. `AI_GATEWAY_MODEL` overrides the default `google/gemini-2.5-flash-lite`. A failed call is shown on the results page and those cards keep the heuristic score.
 
 Create a token at [Apify Console → Integrations](https://console.apify.com/settings/integrations).
 

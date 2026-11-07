@@ -1,4 +1,4 @@
-import { generateText, Output } from "ai";
+import { gateway, generateText, Output } from "ai";
 import { z } from "zod";
 import { candidateKey } from "./rank";
 import type { Candidate, LlmSpend, ParsedSpec, RawCandidate } from "./types";
@@ -38,8 +38,14 @@ export function matchModelId(): string {
   return process.env.AI_GATEWAY_MODEL?.trim() || MATCH_MODEL;
 }
 
-export function aiGatewayConfigured(): boolean {
-  return Boolean(process.env.AI_GATEWAY_API_KEY?.trim() || process.env.VERCEL_OIDC_TOKEN?.trim());
+export function matchErrorMessage(error: unknown): string {
+  const message = error instanceof Error && error.message.trim() ? error.message.trim() : "The AI match call failed.";
+  let safe = message.replace(/\s+/g, " ");
+  for (const secret of [process.env.AI_GATEWAY_API_KEY, process.env.VERCEL_OIDC_TOKEN, process.env.APIFY_TOKEN, process.env.OPENAI_API_KEY]) {
+    const token = secret?.trim();
+    if (token) safe = safe.split(token).join("[redacted]");
+  }
+  return safe.slice(0, 500);
 }
 
 export function tokenCostUsd(model: string, inputTokens: number, outputTokens: number): number {
@@ -121,7 +127,7 @@ function gatewayUsd(metadata: unknown): number | null {
 export function createGatewayJudge(model = matchModelId()): CandidateJudge {
   return async ({ specText, profile }) => {
     const result = await generateText({
-      model,
+      model: gateway(model),
       maxOutputTokens: 400,
       output: Output.object({
         schema: aiMatchSchema,
@@ -181,6 +187,7 @@ export async function scoreCandidatesWithAi(
   let inputTokens = 0;
   let outputTokens = 0;
   let usd = 0;
+  let errorMessage = "";
 
   await mapPool(candidates, options.concurrency ?? MATCH_CONCURRENCY, async (candidate) => {
     const record = byId.get(candidate.id);
@@ -210,8 +217,9 @@ export async function scoreCandidatesWithAi(
         skillsMatch: match.skillsMatch,
         locationFit: match.locationFit,
       };
-    } catch {
+    } catch (error) {
       failed += 1;
+      if (!errorMessage) errorMessage = matchErrorMessage(error);
       candidate.scoreSource = "heuristic";
       candidate.matchReason = "Heuristic score (AI match failed)";
     }
@@ -231,5 +239,6 @@ export async function scoreCandidatesWithAi(
     inputTokens,
     outputTokens,
     usd: Math.round(usd * 1_000_000) / 1_000_000,
+    ...(errorMessage ? { error: errorMessage } : {}),
   };
 }

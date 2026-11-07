@@ -1,6 +1,7 @@
 import { ACTOR_TIMEOUT_SECS } from "./actors";
 import { chargeIsSettled, readRunSnapshot, withSettledUsageTotal, type ActorRunSnapshot } from "./charge";
-import type { SourceId } from "./types";
+import type { SearchRequest, SourceId } from "./types";
+import { readStoredRequest } from "./saved-spec";
 import { asRecord, asString } from "./text";
 
 export type ActorRunOptions = {
@@ -144,6 +145,7 @@ export type SearchGroupRecord = {
   jobTitle: string;
   location: string;
   runIds: string[];
+  request?: SearchRequest | null;
   llm?: {
     model: string;
     calls: number;
@@ -190,6 +192,7 @@ export async function saveSearchGroup(token: string, group: SearchGroupRecord): 
       jobTitle: group.jobTitle,
       location: group.location,
       runIds: group.runIds,
+      request: group.request ?? null,
       llm: group.llm ?? null,
     }),
     signal: AbortSignal.timeout(15_000),
@@ -240,6 +243,7 @@ export async function listSearchGroups(token: string): Promise<SearchGroupRecord
       jobTitle: asString(record?.jobTitle),
       location: asString(record?.location),
       runIds,
+      request: readStoredRequest(record?.request),
       llm: readLlm(record?.llm),
     });
   }

@@ -15,8 +15,10 @@ import type { SearchRequest } from "@/lib/types";
 type SpecFormProps = {
   value: SearchRequest;
   loading: boolean;
+  revision: number;
   onChange: (value: SearchRequest) => void;
   onSubmit: () => void;
+  onRerun: () => void;
 };
 
 function SearchEstimate({ value }: { value: SearchRequest }) {
@@ -39,7 +41,7 @@ function FieldHint({ children }: { children: string }) {
   return <p className="text-sm leading-5 text-muted-foreground">{children}</p>;
 }
 
-export function SpecForm({ value, loading, onChange, onSubmit }: SpecFormProps) {
+export function SpecForm({ value, loading, revision, onChange, onSubmit, onRerun }: SpecFormProps) {
   const valueRef = useRef(value);
   valueRef.current = value;
   const touched = useRef(new Set<string>());
@@ -52,6 +54,10 @@ export function SpecForm({ value, loading, onChange, onSubmit }: SpecFormProps) 
     touched.current.add(String(key));
     onChange({ ...valueRef.current, [key]: next, lockedFields: [...touched.current] });
   }
+
+  useEffect(() => {
+    touched.current = new Set(value.lockedFields ?? []);
+  }, [revision]);
 
   useEffect(() => {
     const text = value.specText.trim();
@@ -239,9 +245,19 @@ export function SpecForm({ value, loading, onChange, onSubmit }: SpecFormProps) 
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <SearchEstimate value={value} />
-        <Button type="submit" disabled={loading}>
-          {loading ? "Searching public sources…" : "Rank public profiles"}
-        </Button>
+        <div className="flex flex-col gap-2">
+          <Button type="submit" disabled={loading}>
+            {loading ? "Searching public sources…" : "Rank public profiles"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={loading || (!value.specText.trim() && !value.jobTitle.trim())}
+            onClick={onRerun}
+          >
+            Rerun last search
+          </Button>
+        </div>
       </div>
     </form>
   );

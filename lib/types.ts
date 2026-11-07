@@ -137,6 +137,7 @@ export type LlmSpend = {
   inputTokens: number;
   outputTokens: number;
   usd: number;
+  error?: string;
 };
 
 export type SearchSpend = {

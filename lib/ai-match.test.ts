@@ -94,6 +94,7 @@ describe("AI match", () => {
     assert.match(bea?.matchReason ?? "", /Heuristic score/);
     assert.equal(spend.calls, 2);
     assert.equal(spend.failed, 1);
+    assert.equal(spend.error, "model failed");
     assert.equal(spend.inputTokens, 1000);
     assert.equal(tokenCostUsd("google/gemini-2.5-flash-lite", 1_000_000, 0), 0.1);
   });

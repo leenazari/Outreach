@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { parsePhraseList, parseSearchRequest } from "@/lib/parse";
 import { extractTitle, interpretTranscript } from "@/lib/parse-speech";
 import { MissingApifyTokenError, searchCandidates } from "@/lib/search";
+import { readStoredRequest } from "@/lib/saved-spec";
 import type { ParsedSpec } from "@/lib/types";
 import { pickCurrency, pickParsedField } from "@/lib/form-fill";
 import { asString } from "@/lib/text";
@@ -90,6 +91,7 @@ export async function POST(request: Request) {
       token: process.env.APIFY_TOKEN,
       includeEmail,
       aiMatch: true,
+      storedRequest: readStoredRequest(body),
     });
     return NextResponse.json(result);
   } catch (error) {

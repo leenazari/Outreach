@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { EMPTY_REQUEST } from "@/components/demo-spec";
+import { RecentSearches } from "@/components/recent-searches";
 import { ResultList } from "@/components/result-list";
 import { SpecForm } from "@/components/spec-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { LAST_SEARCH_KEY, readLastSearch } from "@/lib/saved-spec";
 import type { SearchRequest, SearchResponse } from "@/lib/types";
 
 function isSearchResponse(value: unknown): value is SearchResponse {
@@ -15,9 +17,29 @@ function isSearchResponse(value: unknown): value is SearchResponse {
 
 export function Finder({ tokenConfigured }: { tokenConfigured: boolean }) {
   const [form, setForm] = useState<SearchRequest>(EMPTY_REQUEST);
+  const [hydrated, setHydrated] = useState(false);
+  const [revision, setRevision] = useState(0);
   const [status, setStatus] = useState<"idle" | "loading" | "error" | "ready">("idle");
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SearchResponse | null>(null);
+
+  useEffect(() => {
+    const saved = readLastSearch(window.localStorage.getItem(LAST_SEARCH_KEY));
+    if (saved) setForm(saved);
+    setHydrated(true);
+    setRevision((current) => current + 1);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    if (!form.specText.trim() && !form.jobTitle.trim()) return;
+    window.localStorage.setItem(LAST_SEARCH_KEY, JSON.stringify(form));
+  }, [form, hydrated]);
+
+  function loadRequest(request: SearchRequest) {
+    setForm(request);
+    setRevision((current) => current + 1);
+  }
 
   async function onSubmit() {
     setStatus("loading");
@@ -62,10 +84,27 @@ export function Finder({ tokenConfigured }: { tokenConfigured: boolean }) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <SpecForm value={form} loading={status === "loading"} onChange={setForm} onSubmit={onSubmit} />
+          <div className="grid gap-5">
+            <RecentSearches disabled={status === "loading"} onLoad={loadRequest} />
+            <SpecForm
+              value={form}
+              loading={status === "loading"}
+              revision={revision}
+              onChange={setForm}
+              onSubmit={onSubmit}
+              onRerun={onSubmit}
+            />
+          </div>
         </CardContent>
       </Card>
-      <ResultList status={status} error={error} result={result} tokenConfigured={tokenConfigured} />
+      <ResultList
+        status={status}
+        error={error}
+        result={result}
+        tokenConfigured={tokenConfigured}
+        canRerun={Boolean(form.specText.trim() || form.jobTitle.trim())}
+        onRerun={onSubmit}
+      />
     </div>
   );
 }
